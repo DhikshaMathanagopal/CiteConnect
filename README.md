@@ -17,26 +17,6 @@ Backend: FastAPI
 Frontend: Streamlit or Next.js
 MLOps: Docker, Kubernetes (GKE), Airflow, DVC, MLflow, GitHub Actions, Prometheus/Grafana
 
-Repository Structure
-'''CiteConnect/
-│── README.md                 # Project intro & usage
-│── requirements.txt          # Python dependencies
-│── .gitignore                # Ignore venv, cache, data dumps
-│── data/                     # Raw & processed datasets
-│   ├── raw/                  # PDFs and metadata
-│   └── processed/            # Clean text, embeddings
-│── src/                      # Source code
-│   ├── ingestion/            # API ingestion (arXiv, Semantic Scholar)
-│   ├── preprocessing/        # PDF parsing, text cleaning, chunking
-│   ├── embeddings/           # Embedding generation & vector DB ops
-│   ├── graph/                # Citation graph construction (Neo4j)
-│   ├── api/                  # FastAPI backend
-│   └── frontend/             # Streamlit / Next.js frontend
-│── notebooks/                # Jupyter notebooks (EDA, experiments)
-│── configs/                  # Config files (API keys, DB settings)
-│── tests/                    # Unit & integration tests
-│── docs/                     # Documentation & diagrams'''
-
 Installation
 Clone the Repository
 git clone https://github.com/<your-username>/CiteConnect.git
