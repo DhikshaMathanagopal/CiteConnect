@@ -18,7 +18,7 @@ Frontend: Streamlit or Next.js
 MLOps: Docker, Kubernetes (GKE), Airflow, DVC, MLflow, GitHub Actions, Prometheus/Grafana
 
 Repository Structure
-CiteConnect/
+'''CiteConnect/
 │── README.md                 # Project intro & usage
 │── requirements.txt          # Python dependencies
 │── .gitignore                # Ignore venv, cache, data dumps
@@ -35,7 +35,7 @@ CiteConnect/
 │── notebooks/                # Jupyter notebooks (EDA, experiments)
 │── configs/                  # Config files (API keys, DB settings)
 │── tests/                    # Unit & integration tests
-│── docs/                     # Documentation & diagrams
+│── docs/                     # Documentation & diagrams'''
 
 Installation
 Clone the Repository
