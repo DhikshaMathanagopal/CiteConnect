@@ -1,0 +1,18 @@
+# Virtual environment
+venv/
+
+# Environment variables
+.env
+
+# Data directories
+data/raw_metadata/
+data/processed/
+data/embeddings/
+
+# Cache and build
+__pycache__/
+.pytest_cache/
+.DS_Store
+
+# VS Code settings
+.vscode/
