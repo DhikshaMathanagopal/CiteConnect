@@ -93,7 +93,7 @@ citeconnect/
 ├── 📄 .gitignore
 ├── 📄 pyproject.toml
 │
-├── 📁 dags/                          # Airflow DAGs (mounted to container)
+├── 📁 dags/
 │   ├── 📄 __init__.py
 │   ├── 📄 simple_data_ingestion_dag.py
 │   ├── 📄 complete_mlops_pipeline_dag.py
@@ -102,10 +102,10 @@ citeconnect/
 │       ├── 📄 notification_helpers.py
 │       └── 📄 task_groups.py
 │
-├── 📁 src/                           # Source code
+├── 📁 src/
 │   ├── 📄 __init__.py
 │   │
-│   ├── 📁 data_pipeline/             # Data ingestion & processing
+│   ├── 📁 data_pipeline/
 │   │   ├── 📄 __init__.py
 │   │   ├── 📁 ingestion/             
 │   │   │   ├── 📄 __init__.py
@@ -128,13 +128,13 @@ citeconnect/
 │   │   │   ├── 📄 data_profiler.py
 │   │   │   └── 📄 batch_validator.py
 │   │   │
-│   │   └── 📁 utils/                 # Shared utilities
+│   │   └── 📁 utils/
 │   │       ├── 📄 __init__.py
 │   │       ├── 📄 storage_helpers.py
 │   │       ├── 📄 logging_config.py
 │   │       └── 📄 error_handlers.py
 │   │
-│   ├── 📁 model_pipeline/            # ML model components
+│   ├── 📁 model_pipeline/
 │   │   ├── 📄 __init__.py
 │   │   ├── 📁 embeddings/
 │   │   │   ├── 📄 __init__.py
@@ -170,98 +170,98 @@ citeconnect/
 │   │       ├── 📄 grafana_dashboards.py
 │   │       └── 📄 alerting_rules.py
 │   │
-│   └── 📁 web_app/                   # Frontend application
+│   └── 📁 web_app/
 │       ├── 📄 __init__.py
-│       ├── 📄 app.py                 # FastAPI/Flask app
+│       ├── 📄 app.py
 │       ├── 📁 static/
 │       ├── 📁 templates/
 │       └── 📁 components/
 │
-├── 📁 tests/                         
+├── 📁 tests/
 │   ├── 📄 __init__.py
-│   ├── 📄 conftest.py                # pytest configuration
+│   ├── 📄 conftest.py
 │   │
-│   ├── 📁 unit/                      # Unit tests
+│   ├── 📁 unit/
 │   │   ├── 📄 test_arxiv_client.py
 │   │   ├── 📄 test_pdf_processor.py
 │   │   ├── 📄 test_quality_checker.py
 │   │   └── 📄 test_embedding_generator.py
 │   │
-│   ├── 📁 integration/               # Integration tests
+│   ├── 📁 integration/
 │   │   ├── 📄 test_data_pipeline.py
 │   │   ├── 📄 test_end_to_end.py
 │   │   └── 📄 test_api_endpoints.py
 │   │
-│   └── 📁 fixtures/                  # Test data
+│   └── 📁 fixtures/
 │       ├── 📄 sample_papers.json
 │       ├── 📄 test_pdfs/
 │       └── 📄 mock_responses/
 │
-├── 📁 configs/                       # Configuration files
+├── 📁 configs/
 │   ├── 📄 __init__.py
-│   ├── 📄 config.yaml                # Main configuration
-│   ├── 📄 selection_criteria.yaml    # Paper selection rules
-│   ├── 📄 model_config.yaml          # ML model parameters
-│   ├── 📄 logging.yaml               # Logging configuration
-│   └── 📄 deployment_config.yaml     # Infrastructure settings
+│   ├── 📄 config.yaml
+│   ├── 📄 selection_criteria.yaml
+│   ├── 📄 model_config.yaml
+│   ├── 📄 logging.yaml
+│   └── 📄 deployment_config.yaml
 │
-├── 📁 scripts/                       # Utility scripts
-│   ├── 📄 setup_environment.sh       # Environment setup
-│   ├── 📄 install_dependencies.sh    # Package installation
-│   ├── 📄 generate_fernet_key.py     # Security setup
-│   ├── 📄 data_backup.py             # Data management
-│   └── 📄 health_check.py            # System health monitoring
+├── 📁 scripts/
+│   ├── 📄 setup_environment.sh
+│   ├── 📄 install_dependencies.sh
+│   ├── 📄 generate_fernet_key.py
+│   ├── 📄 data_backup.py
+│   └── 📄 health_check.py
 │
-├── 📁 docs/                          # Documentation
+├── 📁 docs/
 │   ├── 📄 README.md
-│   ├── 📄 SETUP.md                   # Setup instructions
-│   ├── 📄 API_DOCUMENTATION.md       # API docs
-│   ├── 📄 ARCHITECTURE.md            # System architecture
-│   ├── 📁 diagrams/                  # Architecture diagrams
-│   └── 📁 presentations/             # For MLOps Expo
+│   ├── 📄 SETUP.md
+│   ├── 📄 API_DOCUMENTATION.md
+│   ├── 📄 ARCHITECTURE.md
+│   ├── 📁 diagrams/
+│   └── 📁 presentations/
 │
-├── 📁 infrastructure/                # Infrastructure as Code
-│   ├── 📁 terraform/                 # GCP infrastructure
+├── 📁 infrastructure/
+│   ├── 📁 terraform/
 │   │   ├── 📄 main.tf
 │   │   ├── 📄 variables.tf
 │   │   └── 📄 outputs.tf
 │   │
-│   ├── 📁 kubernetes/                # K8s manifests
+│   ├── 📁 kubernetes/
 │   │   ├── 📄 deployment.yaml
 │   │   ├── 📄 service.yaml
 │   │   └── 📄 ingress.yaml
 │   │
-│   └── 📁 monitoring/                # Monitoring configs
+│   └── 📁 monitoring/
 │       ├── 📄 prometheus.yaml
 │       ├── 📄 grafana-dashboard.json
 │       └── 📄 alerts.yaml
 │
-├── 📁 notebooks/                     # Jupyter notebooks (analysis/prototyping)
+├── 📁 notebooks/
 │   ├── 📄 01_data_exploration.ipynb
 │   ├── 📄 02_pdf_processing_analysis.ipynb
 │   ├── 📄 03_embedding_experiments.ipynb
 │   └── 📄 04_model_evaluation.ipynb
 │
-├── 📁 data/                          # Local data (gitignored, for development)
-│   ├── 📁 raw/                       # Downloaded papers
-│   ├── 📁 processed/                 # Processed data
-│   ├── 📁 embeddings/                # Generated embeddings
-│   └── 📁 models/                    # Trained models
+├── 📁 data/
+│   ├── 📁 raw/
+│   ├── 📁 processed/
+│   ├── 📁 embeddings/
+│   └── 📁 models/
 │
-├── 📁 logs/                          # Airflow logs (mounted from container)
+├── 📁 logs/
 │   └── 📄 .gitkeep
 │
-├── 📁 working_data/                  # Temporary processing data (mounted to container)
+├── 📁 working_data/
 │   ├── 📁 temp_pdfs/
 │   ├── 📁 processing_cache/
 │   └── 📄 .gitkeep
 │
-├── 📁 config/                        # Airflow configs & credentials (mounted to container)
+├── 📁 config/
 │   ├── 📄 .gitkeep
-│   ├── 📄 gcp-credentials.json       # (gitignored)
-│   └── 📄 api_keys.env               # (gitignored)
+│   ├── 📄 gcp-credentials.json
+│   └── 📄 api_keys.env
 │
-└── 📁 plugins/                       # Airflow plugins (mounted to container)
+└── 📁 plugins/
     ├── 📄 __init__.py
     ├── 📁 operators/
     │   ├── 📄 citeconnect_operators.py
