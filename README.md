@@ -81,10 +81,6 @@ python src/ingestion/fetch_papers.py
 1. Open-access PDFs are stored and parsed; restricted PDFs are linked via metadata only.
 2. This project is for academic purposes and aligns with the MLOps IE7305 course objectives.
 
-# CiteConnect Project Folder Structure
-
-## Complete Project Layout
-
 # CiteConnect Project Structure
 
 ```
