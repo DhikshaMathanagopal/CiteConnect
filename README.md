@@ -1,82 +1,109 @@
-## CiteConnect - Research Paper Recommendation System
-### Project Overview
-CiteConnect is an intelligent research paper recommendation system that transforms how researchers discover and explore academic literature. By leveraging retrieval-augmented generation (RAG), vector search, and citation graph analysis, the platform provides personalized, explainable recommendations beyond traditional keyword-based searches.
+# CiteConnect: Research Paper Metadata & Introduction Extraction Pipeline
 
-### Key Features
+This repository contains the **CiteConnect data pipeline** — a modular ingestion system that fetches research papers from open sources (Semantic Scholar, CORE, OpenAlex, Unpaywall, PubMed Central), resolves open-access PDFs, and extracts structured text sections (Abstract, Introduction) using **GROBID** for downstream retrieval and RAG applications.
 
-- Semantic Search: Understands concepts, not just keywords
-- AI-Powered Explanations: Each recommendation includes why it's relevant
-- Interactive Citation Graphs: Visualize paper connections and research lineage
-- Personalized Recommendations: Adapts to individual research interests
-- Unified Platform: Search, read, and analyze papers in one place
-- Citation Graph: Interactive visualization of how papers are connected via citations.
-- End-to-End MLOps: Containerized pipelines, CI/CD workflows, monitoring, and drift detection.
+## Overview
 
-### Technical Highlights
+CiteConnect automates:
+1. **Metadata Collection** — using the [Semantic Scholar API](https://api.semanticscholar.org/), [CORE API](https://core.ac.uk/services/api/), and [OpenAlex API](https://docs.openalex.org/).
+2. **PDF Resolution** — via Unpaywall, PMC mirrors, CORE, OpenAlex, CrossRef, and direct open-access URLs.
+3. **Text Extraction** — using [GROBID](https://github.com/ourresearch/grobid) to parse PDFs into structured TEI XML and extract Introduction and Abstract.
+4. **Data Storage** — saving results to compressed `.parquet` files, ready for vector database ingestion and retrieval.
 
-- Microservices architecture deployed on Kubernetes
-- RAG pipeline with OpenAI/Vertex AI integration
-- Vector database for semantic similarity search
-- Graph database for citation network analysis
-- MLOps best practices with CI/CD and monitoring
+## Project Structure
 
-### Tech Stack
-- Data Sources: arXiv API, Semantic Scholar API, Unpaywall API
-- ML/NLP: OpenAI embeddings / Sentence-Transformers, spaCy
-- Databases: Vector DB (FAISS/Pinecone), Neo4j (citations), GCS (storage)
-- Backend: FastAPI
-- Frontend: Streamlit or Next.js
-- MLOps: Docker, Kubernetes (GKE), Airflow, DVC, MLflow, GitHub Actions, Prometheus/Grafana
+```
+src/
+└── data_pipeline/
+    ├── ingestion/
+    │   ├── stream_grobid.py             # Main continuous ingestion pipeline
+    ├── clients/
+    │   ├── semantic_scholar_client.py   # Metadata fetcher (Semantic Scholar)
+    │   ├── pdf_resolver.py              # Robust PDF URL resolver (Unpaywall, OpenAlex, CORE, etc.)
+    │   ├── grobid_client.py             # Handles PDF → TEI XML → Section extraction
+    └── utils/
+        ├── http_utils.py                # Shared safe_get with retry, rate limit, and logging
+        ├── deduplication.py             # Title-based deduplication utilities
+data/
+└── parquet_corpus/                      # Output folder for .parquet results
+```
 
-## Installation
-```bash
-Clone the Repository
-git clone https://github.com/<your-username>/CiteConnect.git
+## Prerequisites
+
+- **Python 3.10+**
+- **Docker** (for running GROBID)
+- Required environment variables:
+
+```
+# .env file
+SEMANTIC_SCHOLAR_KEY=<your_semantic_key>
+CORE_API_KEY=<your_core_key>
+UNPAYWALL_EMAIL=yourname@northeastern.edu
+PDF_CACHE_PATH=.cache/pdf_cache.json
+```
+
+You can also set them inline before running:
+```
+export SEMANTIC_SCHOLAR_KEY="your_key"
+export UNPAYWALL_EMAIL="yourname@northeastern.edu"
+```
+
+## Setup
+
+```
+git clone https://github.com/DhikshaMathanagopal/CiteConnect.git
 cd CiteConnect
-```
-
-## Set up Virtual Environment
-```
-python3 -m venv venv
-source venv/bin/activate   # Mac
-venv\Scripts\activate      # Windows
-```
-
-### Install Dependencies
-```bash
 pip install -r requirements.txt
+
+docker run -t --rm -p 8070:8070 lfoppiano/grobid:0.8.0
+
+curl -I http://localhost:8070/api/isalive
 ```
 
-### Configure API Keys
-```bash
-Create a .env file in the root directory.
-Add credentials (arXiv, Semantic Scholar, OpenAI, Neo4j, etc.).
+## Run the Pipeline
+
+```
+python -m src.data_pipeline.ingestion.stream_grobid   --query "Drug response prediction"   --grobid http://localhost:8070   --limit 20   --workers 4   --out_dir data/parquet_corpus
 ```
 
-### Usage
-```bash
-Run Backend (FastAPI)
-uvicorn src.api.main:app --reload
+### Output:
+- `data/parquet_corpus/drug_response_prediction.parquet` → structured metadata + intro text  
+- `data/parquet_corpus/failures_drug_response_prediction.json` → diagnostic logs for failed papers  
+
+## How PDF Resolution Works
+
+The pipeline attempts multiple resolution strategies:
+1. Direct `openAccessPdf.url` from Semantic Scholar  
+2. PubMed Central (by PMCID)  
+3. [Unpaywall](https://unpaywall.org/products/api)  
+4. [CORE API](https://core.ac.uk/services/api/)  
+5. [OpenAlex](https://docs.openalex.org/)  
+6. [CrossRef](https://api.crossref.org/)  
+7. Headless browser fallback (via Playwright, if installed)
+
+It also includes special handling for:
+- **bioRxiv/medRxiv** (`?download=true`)
+- **MDPI** PDFs (`?download=1`)
+- **OUP, PeerJ** domain-specific restrictions
+- **Caching** of successful DOI → PDF mappings in `.cache/pdf_cache.json`
+
+## Data for Retrieval
+
+Each `.parquet` file can be directly loaded into a vector database such as FAISS, Chroma, or Milvus for downstream **RAG pipelines**.
+
+Example:
+
+```python
+import pandas as pd
+df = pd.read_parquet("data/parquet_corpus/drug_response_prediction.parquet")
+df = df[df.status == "ok"]
+texts = df["introduction"].dropna().tolist()
 ```
 
-```bash
-Run Frontend (Streamlit)
-streamlit run src/frontend/app.py
-```
+## Common Issues
 
-```bash
-Run Ingestion Pipeline (Manual / Scheduled)
-python src/ingestion/fetch_papers.py
-```
-
-## Contributors
-
-1. Abhinav Aditya
-2. Anusha Srinivasan 
-3. Dennis Jose 
-4. Dhiksha Mathanagopal
-5. Sahil Mohanty 
-
-### Notes
-1. Open-access PDFs are stored and parsed; restricted PDFs are linked via metadata only.
-2. This project is for academic purposes and aligns with the MLOps IE7305 course objectives.
+| Problem | Cause | Solution |
+|----------|--------|-----------|
+| `403 Forbidden` | Publisher blocks non-browser requests | Enable browser fallback |
+| `429 Too Many Requests` | API rate limit | Add delay or rotate API key |
+| `500 BAD_INPUT_DATA` | Broken PDF | Skip automatically |
