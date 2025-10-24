@@ -1,0 +1,12 @@
+stages:
+  collect_papers:
+    cmd: python src/DataPipeline/Ingestion/semantic_scholar_client.py
+    deps:
+    - src/DataPipeline/Ingestion/semantic_scholar_client.py
+    params:
+    - data_collection.limit
+    - data_collection.query
+    outs:
+    - data/raw/papers.json
+    metrics:
+    - metrics/stats.json

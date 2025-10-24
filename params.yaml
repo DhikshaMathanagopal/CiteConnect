@@ -1,0 +1,3 @@
+data_collection:
+  query: "machine learning"
+  limit: 10
