@@ -96,45 +96,10 @@ def test_api_connection(**context):
     
     return "api_success"
 
-def test_data_storage(**context):
-    """Test data storage functionality."""
-    print("Testing data storage...")
-    
-    import json
-    import os
-    from datetime import datetime
-    
-    # Create test data
-    test_data = {
-        'timestamp': datetime.now().isoformat(),
-        'test_message': 'Hello from CiteConnect!',
-        'papers_count': 42
-    }
-    
-    # Create data directory - will fail if permissions issue
-    data_dir = '/opt/airflow/data/raw'
-    os.makedirs(data_dir, exist_ok=True)
-    
-    # Save test file - will fail if write permissions issue
-    test_file = os.path.join(data_dir, 'test_data.json')
-    with open(test_file, 'w') as f:
-        json.dump(test_data, f, indent=2)
-    
-    print(f"Successfully saved test data to {test_file}")
-    
-    # Verify file exists and can be read - will fail if file corruption
-    if not os.path.exists(test_file):
-        raise FileNotFoundError(f"Test file was not created: {test_file}")
-    
-    with open(test_file, 'r') as f:
-        loaded_data = json.load(f)
-    
-    # Validate data integrity
-    if loaded_data['test_message'] != test_data['test_message']:
-        raise ValueError("Data corruption detected in saved file")
-    
-    print(f"Successfully loaded and validated data: {loaded_data['test_message']}")
-    return "storage_success"
+def get_papers_from_api(query: str, limit: int):
+    from src.DataPipeline.Ingestion.semantic_scholar_client import SemanticScholarClient
+    ssc_client = SemanticScholarClient()
+    return ssc_client.search(query, limit=limit)
 
 def send_success_notification(**context):
     """Send success email with pipeline summary."""
