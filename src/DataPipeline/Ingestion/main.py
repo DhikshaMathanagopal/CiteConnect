@@ -4,8 +4,8 @@ import time
 import pandas as pd
 from pathlib import Path
 
-from data_pipeline.utils.logging_config import setup_logging
-from data_pipeline.utils.constants import GCS_BUCKET
+from DataPipeline.utils.logging_config import setup_logging
+from DataPipeline.utils.constants import GCS_BUCKET
 from .semantic_scholar_client import search_semantic_scholar
 from .processor import process_papers
 from .gcs_uploader import upload_to_gcs
