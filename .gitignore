@@ -9,3 +9,4 @@ data/
 *.parquet
 *.csv
 .ipynb_checkpoints/
+.DS_Store
