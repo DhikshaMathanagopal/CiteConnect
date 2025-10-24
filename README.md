@@ -101,21 +101,21 @@ citeconnect/
 │       └── task_groups.py
 ├── src/
 │   ├── __init__.py
-│   ├── data_pipeline/
+│   ├── DataPipeline/
 │   │   ├── __init__.py
-│   │   ├── ingestion/
+│   │   ├── Ingestion/
 │   │   │   ├── __init__.py
 │   │   │   ├── arxiv_client.py
 │   │   │   ├── semantic_scholar_client.py
 │   │   │   ├── paper_selector.py
 │   │   │   └── batch_downloader.py
-│   │   ├── processing/
+│   │   ├── Processing/
 │   │   │   ├── __init__.py
 │   │   │   ├── pdf_processor.py
 │   │   │   ├── text_extractor.py
 │   │   │   ├── chunking_engine.py
 │   │   │   └── preprocessing_utils.py
-│   │   ├── validation/
+│   │   ├── Validation/
 │   │   │   ├── __init__.py
 │   │   │   ├── quality_checker.py
 │   │   │   ├── validation_rules.py
@@ -126,23 +126,23 @@ citeconnect/
 │   │       ├── storage_helpers.py
 │   │       ├── logging_config.py
 │   │       └── error_handlers.py
-│   ├── model_pipeline/
+│   ├── ModelPipeline/
 │   │   ├── __init__.py
-│   │   ├── embeddings/
+│   │   ├── Embeddings/
 │   │   │   ├── __init__.py
 │   │   │   ├── embedding_generator.py
 │   │   │   ├── vector_store.py
 │   │   │   └── similarity_search.py
-│   │   ├── training/
+│   │   ├── Training/
 │   │   │   ├── __init__.py
 │   │   │   ├── model_trainer.py
 │   │   │   ├── recommendation_engine.py
 │   │   │   └── evaluation_metrics.py
-│   │   └── serving/
+│   │   └── Serving/
 │   │       ├── __init__.py
 │   │       ├── model_server.py
 │   │       └── api_endpoints.py
-│   ├── deployment/
+│   ├── Deployment/
 │   │   ├── __init__.py
 │   │   ├── infrastructure/
 │   │   │   ├── gcp_setup.py
