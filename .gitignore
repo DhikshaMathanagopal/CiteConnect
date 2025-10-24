@@ -4,3 +4,5 @@ venv/
 data/raw/*
 data/processed/*
 *.pyc
+/logs
+.DS_Store
