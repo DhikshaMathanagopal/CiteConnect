@@ -1,6 +1,6 @@
 from typing import List, Dict
 import requests, time, logging
-from DataPipeline.utils.constants import HEADERS
+from data_pipeline.utils.constants import HEADERS
 
 
 def search_semantic_scholar(query: str, limit: int = 10, retries: int = 3) -> List[Dict]:

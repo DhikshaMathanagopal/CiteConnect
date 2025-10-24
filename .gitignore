@@ -4,5 +4,9 @@ venv/
 data/raw/*
 data/processed/*
 *.pyc
-/logs
+logs/
+data/
+*.parquet
+*.csv
+.ipynb_checkpoints/
 .DS_Store
