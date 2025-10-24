@@ -19,7 +19,7 @@ except ImportError:
     PDF_SUPPORT = False
     logging.warning("PyMuPDF not installed")
 
-from data_pipeline.utils.constants import HEADERS
+from DataPipeline.utils.constants import HEADERS
 
 
 class ContentExtractor:
