@@ -9,3 +9,19 @@ data/
 *.parquet
 *.csv
 .ipynb_checkpoints/
+# Virtual environments
+.venv_test/
+.venv/
+env/
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Test outputs
+tests/fixtures/temp/
+test_outputs/
