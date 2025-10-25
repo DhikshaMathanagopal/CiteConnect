@@ -1,0 +1,6 @@
+README.md
+setup.py
+src/citeconnect.egg-info/PKG-INFO
+src/citeconnect.egg-info/SOURCES.txt
+src/citeconnect.egg-info/dependency_links.txt
+src/citeconnect.egg-info/top_level.txt
