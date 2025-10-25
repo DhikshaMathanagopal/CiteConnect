@@ -381,6 +381,10 @@ isOpenAccess, openAccessPdf, tldr
 citeconnect/
 ├── README.md
 ├── requirements.txt
+├── requirements-test.txt           # NEW: Testing dependencies
+├── pytest.ini                      # NEW: Test configuration
+├── setup.py                        # NEW: Package setup for testing
+├── TESTING_PIPELINE.md            # NEW: Testing documentation
 ├── docker-compose.yaml
 ├── .env.example
 ├── .gitignore
@@ -399,8 +403,13 @@ citeconnect/
 │   │   ├── __init__.py
 │   │   ├── ingestion/
 │   │   │   ├── __init__.py
-│   │   │   ├── arxiv_client.py
 │   │   │   ├── semantic_scholar_client.py
+│   │   │   ├── content_extractor.py
+│   │   │   ├── metadata_utils.py
+│   │   │   ├── processor.py
+│   │   │   ├── gcs_uploader.py
+│   │   │   ├── batch_ingestion.py
+│   │   │   ├── arxiv_client.py
 │   │   │   ├── paper_selector.py
 │   │   │   └── batch_downloader.py
 │   │   ├── processing/
@@ -417,6 +426,7 @@ citeconnect/
 │   │   │   └── batch_validator.py
 │   │   └── utils/
 │   │       ├── __init__.py
+│   │       ├── constants.py
 │   │       ├── storage_helpers.py
 │   │       ├── logging_config.py
 │   │       └── error_handlers.py
@@ -456,22 +466,34 @@ citeconnect/
 │       ├── static/
 │       ├── templates/
 │       └── components/
-├── tests/
+├── tests/                          # UPDATED: Complete test structure
 │   ├── __init__.py
-│   ├── conftest.py
-│   ├── unit/
-│   │   ├── test_arxiv_client.py
-│   │   ├── test_pdf_processor.py
-│   │   ├── test_quality_checker.py
-│   │   └── test_embedding_generator.py
-│   ├── integration/
-│   │   ├── test_data_pipeline.py
-│   │   ├── test_end_to_end.py
-│   │   └── test_api_endpoints.py
-│   └── fixtures/
+│   ├── conftest.py                # Shared fixtures and test configuration
+│   │
+│   ├── unit/                      # Unit tests (147 tests)
+│   │   ├── __init__.py
+│   │   ├── test_semantic_scholar_client.py    # 35 tests
+│   │   ├── test_content_extractor.py          # 32 tests
+│   │   ├── test_metadata_utils.py             # 44 tests
+│   │   ├── test_processor.py                  # 18 tests
+│   │   ├── test_gcs_uploader.py              # 23 tests
+│   │   └── test_setup.py                      # Setup validation tests
+│   │
+│   ├── integration/               # Integration tests (12 tests)
+│   │   ├── __init__.py
+│   │   └── test_end_to_end_pipeline.py       # Complete pipeline tests
+│   │
+│   ├── data_quality/              # Data quality tests (future)
+│   │   ├── __init__.py
+│   │   ├── test_schema_validation.py
+│   │   ├── test_data_completeness.py
+│   │   └── test_anomaly_detection.py
+│   │
+│   └── fixtures/                  # Test data and mocks
+│       ├── __init__.py
 │       ├── sample_papers.json
-│       ├── test_pdfs/
-│       └── mock_responses/
+│       └── mock_responses.py
+│
 ├── configs/
 │   ├── __init__.py
 │   ├── config.yaml
