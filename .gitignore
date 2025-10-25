@@ -25,3 +25,4 @@ coverage.xml
 # Test outputs
 tests/fixtures/temp/
 test_outputs/
+.DS_Store
