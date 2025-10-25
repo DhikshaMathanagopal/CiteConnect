@@ -377,7 +377,6 @@ isOpenAccess, openAccessPdf, tldr
 
 # CiteConnect Project Structure
 
-
 ```
 citeconnect/
 ├── README.md
