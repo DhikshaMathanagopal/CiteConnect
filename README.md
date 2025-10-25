@@ -1,373 +1,535 @@
-# CiteConnect Testing Pipeline Documentation
+# CiteConnect: Research Paper Ingestion Pipeline
 
 ## Overview
 
-This document explains the testing implementation for the CiteConnect data pipeline. The goal is to achieve 80%+ test coverage while ensuring all components work correctly in isolation and together.
+This pipeline ingests academic research papers from Semantic Scholar, extracts comprehensive metadata and full-text content (abstracts and introductions), and stores the data in a structured format for downstream processing in the CiteConnect recommendation system.
+
+## Features
+
+### Multi-Strategy Content Extraction
+The pipeline uses a **4-tier fallback approach** to maximize intro extraction success:
+
+1. **ArXiv HTML** (Strategy 1) - Cleanest source, best quality
+2. **GROBID PDF Parsing** (Strategy 2) - ML-based structured extraction
+3. **Regex PDF Extraction** (Strategy 3) - Pattern-based fallback
+4. **Abstract + TLDR** (Strategy 4) - Always available fallback
+
+This ensures **100% content coverage** while maximizing the number of full introductions extracted.
+
+### Comprehensive Metadata Collection
+
+The pipeline collects **30 metadata fields** per paper:
+
+#### Identifiers
+- `paperId` - Semantic Scholar unique ID
+- `externalIds` - DOI, ArXiv ID, PubMed ID, etc.
+
+#### Core Content
+- `title` - Paper title
+- `abstract` - Paper abstract
+- `introduction` - Extracted introduction section (when available)
+
+#### Temporal Information
+- `year` - Publication year
+- `publicationDate` - Full publication date (YYYY-MM-DD)
+
+#### Authorship
+- `authors` - Comma-separated author names
+- `authorIds` - List of Semantic Scholar author IDs
+
+#### Venue & Publication Type
+- `venue` - Journal or conference name
+- `publicationTypes` - Type(s): Journal, Conference, Review, etc.
+- `publicationVenue` - Detailed venue information
+
+#### Citation Metrics
+- `citationCount` - Total citations
+- `influentialCitationCount` - High-impact citations
+- `referenceCount` - Number of papers cited
+
+#### Citation Network
+- `citations` - Paper IDs of papers citing this work (max 50)
+- `references` - Paper IDs of papers cited by this work (max 50)
+
+#### Topic Classification
+- `fieldsOfStudy` - Broad topics (e.g., "Computer Science", "Medicine")
+- `s2FieldsOfStudy` - Granular AI-tagged topics
+
+#### Access Information
+- `isOpenAccess` - Whether paper is open access
+- `pdf_url` - Direct PDF URL if available
+
+#### AI-Generated Summary
+- `tldr` - One-sentence summary from Semantic Scholar
+
+#### Extraction Metadata
+- `extraction_method` - How content was extracted (`arxiv_html`, `grobid_pdf`, `regex_pdf`, `abstract_tldr`)
+- `content_quality` - Quality rating (`high`, `medium`, `low`)
+- `has_intro` - Boolean: full introduction extracted?
+- `intro_length` - Introduction length in characters
+
+#### Pipeline Tracking
+- `status` - Pipeline status
+- `fail_reason` - Reason for failure (if any)
+- `scraped_at` - Timestamp of scraping
 
 ---
 
-## Current Testing Status
+## Installation
 
-### Completed Modules
+### Prerequisites
+- Python 3.8+
+- Docker (optional, for GROBID)
 
-**Module 1: semantic_scholar_client.py**
-- 35 unit tests written
-- Tests API calls, retry logic, rate limiting, error handling
-- All tests passing
+### Required Dependencies
 
-**Module 2: content_extractor.py**
-- 32 unit tests written
-- Tests 4-tier extraction strategy (ArXiv HTML, GROBID, Regex PDF, Fallback)
-- All applicable tests passing (5 tests skipped due to optional dependencies)
+```bash
+pip install pymupdf pandas requests beautifulsoup4 pyarrow
+```
 
-**Module 3: metadata_utils.py**
-- 44 unit tests written
-- Tests metadata field extraction, JSON serialization, author parsing, safe nested access
-- All tests passing
+### Optional Dependencies (for GROBID)
 
-**Module 4: processor.py**
-- 18 unit tests written
-- Tests pipeline orchestration, content/metadata integration, rate limiting, mixed results
-- All tests passing
+```bash
+# Install GROBID client
+pip install grobid-client-python
 
-**Overall Status:**
-- 129 tests total
-- 124 tests passing
-- 5 tests skipped (4 GROBID tests + 1 mock interaction issue)
-- 0 tests failing
-- Test execution time: 3.09 seconds
-- Pass rate: 96% (100% of runnable tests)
+# Start GROBID server (Docker required)
+docker run -d -p 8070:8070 --name grobid-server lfoppiano/grobid:0.7.3
+
+# Wait for startup
+sleep 60
+
+# Verify GROBID is running
+curl http://localhost:8070/api/isalive
+# Should return: true
+```
+
+### Optional: Semantic Scholar API Key
+
+For faster rate limits (1 req/sec vs 1 req/5sec):
+
+1. Request API key at: https://www.semanticscholar.org/product/api
+2. Set environment variable:
+```bash
+export SEMANTIC_SCHOLAR_KEY="your-api-key-here"
+```
 
 ---
 
-## Test Structure
+## Usage
 
-### Directory Layout
+### Basic Usage
+
+```bash
+# Single search term
+python ingestion.py "machine learning" --limit 10
+
+# Multiple search terms
+python ingestion.py "AI in healthcare" "drug discovery" --limit 20
+
+# Custom output directory
+python ingestion.py "transformers" --limit 50 --output data/raw
+
+# Debug mode
+python ingestion.py "deep learning" --limit 5 --debug
+```
+
+### Command-Line Arguments
+
+```
+positional arguments:
+  search_terms          Search terms (space-separated)
+
+optional arguments:
+  --limit LIMIT         Papers per search term (default: 10)
+  --output OUTPUT       Output directory (default: data/papers)
+  --debug              Print debug information
+```
+
+---
+
+## Pipeline Architecture
+
+### Data Flow
+
+```
+User Query
+    ↓
+Semantic Scholar API (with rate limiting)
+    ↓
+Paper Metadata Extraction (30 fields)
+    ↓
+Multi-Strategy Content Extraction
+    ├─→ Strategy 1: ArXiv HTML
+    ├─→ Strategy 2: GROBID PDF
+    ├─→ Strategy 3: Regex PDF
+    └─→ Strategy 4: Abstract + TLDR
+    ↓
+Data Quality Validation
+    ↓
+Save to Parquet File
+    ↓
+Log Statistics & Metrics
+```
+
+### Rate Limiting
+
+The pipeline implements intelligent rate limiting to avoid API blocks:
+
+- **Semantic Scholar**: 1.5s (with key) or 5s (without key) between requests
+- **ArXiv**: 2s between requests
+- **PDF Downloads**: 2s between downloads
+- **403 Retries**: 5s wait before retry with different user agent
+- **Exponential Backoff**: Doubles wait time on repeated failures
+
+---
+
+## Output Format
+
+### File Structure
+
+```
+data/
+├── machine_learning_1729534520.parquet
+├── AI_in_healthcare_1729534600.parquet
+└── drug_discovery_1729534800.parquet
+```
+
+Each parquet file contains all papers from one search query with complete metadata.
+
+### Example Output Record
+
+```python
+{
+    'paperId': '204e3073870fae3d05bcbc2f6a8e263d9b72e776',
+    'title': 'Attention Is All You Need',
+    'abstract': 'The dominant sequence transduction models...',
+    'introduction': 'Recurrent neural networks, long short-term memory...',
+    'year': 2017,
+    'citationCount': 89234,
+    'influentialCitationCount': 12456,
+    'extraction_method': 'arxiv_html',
+    'content_quality': 'high',
+    'has_intro': True,
+    'intro_length': 3245,
+    # ... 20+ more fields
+}
+```
+
+---
+
+## Performance Metrics
+
+### Expected Success Rates
+
+| Extraction Method | Success Rate | Quality |
+|-------------------|--------------|---------|
+| ArXiv HTML | 10-15% of papers | High |
+| GROBID PDF | 20-30% of papers | High |
+| Regex PDF | 15-25% of papers | Medium |
+| Abstract + TLDR | 100% of papers | Low |
+
+**Overall: 60-70% full intro extraction + 100% content coverage**
+
+### Processing Time
+
+| Papers | Without API Key | With API Key |
+|--------|----------------|--------------|
+| 10 papers | ~5-8 minutes | ~2-3 minutes |
+| 50 papers | ~25-35 minutes | ~10-15 minutes |
+| 100 papers | ~50-70 minutes | ~20-30 minutes |
+
+---
+
+## Known Limitations & Bias
+
+### Data Bias
+
+1. **Open Access Bias**: Only includes freely available papers (~30-40% of all research)
+2. **Publisher Bias**: Some publishers block automated access (HTTP 403)
+3. **Extraction Bias**: Papers with non-standard formats may fail intro extraction
+4. **Temporal Bias**: Recent papers (2015+) have better availability
+5. **Field Bias**: ArXiv-heavy topics (CS, Physics, Math) have higher success rates
+
+### Technical Limitations
+
+1. **GROBID**: Requires Docker service, may fail on ~30% of PDFs
+2. **PDF Parsing**: Quality varies by publisher formatting
+3. **Rate Limits**: Without API key, processing is slower
+4. **No Paywall Access**: Cannot access subscription-only papers
+
+All limitations are tracked via metadata fields for transparency and downstream analysis.
+
+---
+
+## Troubleshooting
+
+### GROBID Not Working
+
+```bash
+# Check if GROBID is running
+curl http://localhost:8070/api/isalive
+
+# Restart GROBID
+docker restart grobid-server
+
+# Or start fresh
+docker run -d -p 8070:8070 --name grobid-server lfoppiano/grobid:0.7.3
+```
+
+### Rate Limit Errors (429)
+
+```bash
+# Set API key
+export SEMANTIC_SCHOLAR_KEY="your-key"
+
+# Or reduce batch size
+python ingestion.py "query" --limit 5
+```
+
+### Import Errors
+
+```bash
+# Install missing dependencies
+pip install pymupdf pandas requests beautifulsoup4 pyarrow
+```
+
+---
+
+## Data Quality Assurance
+
+### Automated Validation
+
+The pipeline automatically validates:
+- All papers have `paperId`, `title`, and `abstract`
+- Years are between 1950-2025
+- Citation counts are non-negative
+- Introduction length is between 200-15,000 characters
+
+### Monitoring Metrics
+
+Each run logs:
+- Total papers processed
+- Extraction success rate by method
+- Content quality distribution
+- Average introduction length
+- Failure reasons breakdown
+
+---
+
+## Integration with CiteConnect Pipeline
+
+### Next Steps After Ingestion
+
+1. **Data Preprocessing** (`preprocessing.py`)
+   - Text cleaning and normalization
+   - Feature engineering (temporal, citation-based)
+   - Data quality validation
+
+2. **Embedding Generation** (`embedding_generation.py`)
+   - Generate vector embeddings using sentence-transformers
+   - Create combined text (title + abstract + intro)
+   - Store embeddings for similarity search
+
+3. **Vector Store Creation** (`vector_store.py`)
+   - Build FAISS index for fast retrieval
+   - Upload to Pinecone/Weaviate for production
+
+4. **Citation Graph** (`graph_builder.py`)
+   - Build Neo4j graph from citations/references
+   - Enable network-based recommendations
+
+---
+
+## File Structure
 
 ```
 CiteConnect/
+├── ingestion.py              # Main ingestion script
+├── requirements.txt          # Python dependencies
+├── README.md                # This file
+└── data/
+    └── papers/              # Output parquet files
+        ├── machine_learning_*.parquet
+        └── AI_healthcare_*.parquet
+```
+
+---
+
+## API Documentation
+
+### Semantic Scholar API
+
+**Endpoint**: `https://api.semanticscholar.org/graph/v1/paper/search`
+
+**Fields Requested**:
+```
+paperId, externalIds, title, abstract, year, publicationDate,
+venue, publicationVenue, publicationTypes, authors,
+citationCount, influentialCitationCount, referenceCount,
+citations, references, fieldsOfStudy, s2FieldsOfStudy,
+isOpenAccess, openAccessPdf, tldr
+```
+
+### Notes
+1. Open-access PDFs are stored and parsed; restricted PDFs are linked via metadata only.
+2. This project is for academic purposes and aligns with the MLOps IE7305 course objectives.
+
+# CiteConnect Project Structure
+
+```
+citeconnect/
+├── README.md
+├── requirements.txt
+├── docker-compose.yaml
+├── .env.example
+├── .gitignore
+├── pyproject.toml
+├── dags/
+│   ├── __init__.py
+│   ├── simple_data_ingestion_dag.py
+│   ├── complete_mlops_pipeline_dag.py
+│   └── dag_utils/
+│       ├── __init__.py
+│       ├── notification_helpers.py
+│       └── task_groups.py
 ├── src/
-│   └── data_pipeline/
-│       ├── ingestion/
-│       │   ├── semantic_scholar_client.py
-│       │   ├── content_extractor.py
-│       │   ├── metadata_utils.py
-│       │   ├── processor.py
-│       │   └── batch_ingestion.py
-│       └── utils/
-│
+│   ├── __init__.py
+│   ├── data_pipeline/
+│   │   ├── __init__.py
+│   │   ├── ingestion/
+│   │   │   ├── __init__.py
+│   │   │   ├── arxiv_client.py
+│   │   │   ├── semantic_scholar_client.py
+│   │   │   ├── paper_selector.py
+│   │   │   └── batch_downloader.py
+│   │   ├── processing/
+│   │   │   ├── __init__.py
+│   │   │   ├── pdf_processor.py
+│   │   │   ├── text_extractor.py
+│   │   │   ├── chunking_engine.py
+│   │   │   └── preprocessing_utils.py
+│   │   ├── validation/
+│   │   │   ├── __init__.py
+│   │   │   ├── quality_checker.py
+│   │   │   ├── validation_rules.py
+│   │   │   ├── data_profiler.py
+│   │   │   └── batch_validator.py
+│   │   └── utils/
+│   │       ├── __init__.py
+│   │       ├── storage_helpers.py
+│   │       ├── logging_config.py
+│   │       └── error_handlers.py
+│   ├── model_pipeline/
+│   │   ├── __init__.py
+│   │   ├── embeddings/
+│   │   │   ├── __init__.py
+│   │   │   ├── embedding_generator.py
+│   │   │   ├── vector_store.py
+│   │   │   └── similarity_search.py
+│   │   ├── training/
+│   │   │   ├── __init__.py
+│   │   │   ├── model_trainer.py
+│   │   │   ├── recommendation_engine.py
+│   │   │   └── evaluation_metrics.py
+│   │   └── serving/
+│   │       ├── __init__.py
+│   │       ├── model_server.py
+│   │       └── api_endpoints.py
+│   ├── deployment/
+│   │   ├── __init__.py
+│   │   ├── infrastructure/
+│   │   │   ├── gcp_setup.py
+│   │   │   ├── k8s_deployer.py
+│   │   │   └── terraform_configs.py
+│   │   ├── containers/
+│   │   │   ├── Dockerfile.data_pipeline
+│   │   │   ├── Dockerfile.model_server
+│   │   │   └── Dockerfile.api
+│   │   └── monitoring/
+│   │       ├── prometheus_config.py
+│   │       ├── grafana_dashboards.py
+│   │       └── alerting_rules.py
+│   └── web_app/
+│       ├── __init__.py
+│       ├── app.py
+│       ├── static/
+│       ├── templates/
+│       └── components/
 ├── tests/
-│   ├── conftest.py                    # Shared fixtures
-│   ├── unit/                          # Unit tests
-│   │   ├── test_semantic_scholar_client.py
-│   │   ├── test_content_extractor.py
-│   │   └── test_setup.py
-│   ├── integration/                   # Integration tests
-│   ├── data_quality/                  # Data validation tests
-│   └── fixtures/                      # Test data
-│
-├── pytest.ini                         # Test configuration
-└── requirements-test.txt              # Test dependencies
+│   ├── __init__.py
+│   ├── conftest.py
+│   ├── unit/
+│   │   ├── test_arxiv_client.py
+│   │   ├── test_pdf_processor.py
+│   │   ├── test_quality_checker.py
+│   │   └── test_embedding_generator.py
+│   ├── integration/
+│   │   ├── test_data_pipeline.py
+│   │   ├── test_end_to_end.py
+│   │   └── test_api_endpoints.py
+│   └── fixtures/
+│       ├── sample_papers.json
+│       ├── test_pdfs/
+│       └── mock_responses/
+├── configs/
+│   ├── __init__.py
+│   ├── config.yaml
+│   ├── selection_criteria.yaml
+│   ├── model_config.yaml
+│   ├── logging.yaml
+│   └── deployment_config.yaml
+├── scripts/
+│   ├── setup_environment.sh
+│   ├── install_dependencies.sh
+│   ├── generate_fernet_key.py
+│   ├── data_backup.py
+│   └── health_check.py
+├── docs/
+│   ├── README.md
+│   ├── SETUP.md
+│   ├── API_DOCUMENTATION.md
+│   ├── ARCHITECTURE.md
+│   ├── diagrams/
+│   └── presentations/
+├── infrastructure/
+│   ├── terraform/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   └── outputs.tf
+│   ├── kubernetes/
+│   │   ├── deployment.yaml
+│   │   ├── service.yaml
+│   │   └── ingress.yaml
+│   └── monitoring/
+│       ├── prometheus.yaml
+│       ├── grafana-dashboard.json
+│       └── alerts.yaml
+├── notebooks/
+│   ├── 01_data_exploration.ipynb
+│   ├── 02_pdf_processing_analysis.ipynb
+│   ├── 03_embedding_experiments.ipynb
+│   └── 04_model_evaluation.ipynb
+├── data/
+│   ├── raw/
+│   ├── processed/
+│   ├── embeddings/
+│   └── models/
+├── logs/
+│   └── .gitkeep
+├── working_data/
+│   ├── temp_pdfs/
+│   ├── processing_cache/
+│   └── .gitkeep
+├── config/
+│   ├── .gitkeep
+│   ├── gcp-credentials.json
+│   └── api_keys.env
+└── plugins/
+    ├── __init__.py
+    ├── operators/
+    │   ├── citeconnect_operators.py
+    │   └── gcs_operators.py
+    └── hooks/
+        └── semantic_scholar_hook.py
 ```
-
----
-
-## Testing Methodology
-
-### Unit Testing Approach
-
-Each test follows the AAA pattern:
-- **Arrange**: Set up test data and mocks
-- **Act**: Execute the function being tested
-- **Assert**: Verify the expected outcome
-
-### Mocking Strategy
-
-External dependencies are mocked to ensure:
-- Tests run quickly (milliseconds vs minutes)
-- No external API calls required
-- Reproducible results
-- Can test error scenarios
-
-**Mocked Components:**
-- HTTP requests (requests.get)
-- File operations (open, file reads/writes)
-- Time delays (time.sleep)
-- External libraries (GROBID, PyMuPDF)
-
----
-
-## What We Test
-
-### semantic_scholar_client.py Coverage
-
-| Category | Tests | Coverage |
-|----------|-------|----------|
-| Successful API calls | 3 tests | Happy path scenarios |
-| URL construction | 3 tests | Parameter validation |
-| Retry logic | 5 tests | Timeouts, connection errors, HTTP errors |
-| HTTP status codes | 7 tests | 400, 403, 404, 429, 500, 502, 503 |
-| Edge cases | 5 tests | Empty queries, malformed JSON |
-| Headers & timeouts | 2 tests | Configuration validation |
-| Realistic data | 1 test | Full paper structure |
-
-### content_extractor.py Coverage
-
-| Component | Tests | Coverage |
-|-----------|-------|----------|
-| Initialization | 3 tests | GROBID setup, error handling |
-| ArXiv HTML extraction | 7 tests | Parsing, section detection, length validation |
-| GROBID PDF extraction | 5 tests | PDF processing, XML parsing, errors |
-| Regex PDF extraction | 5 tests | Pattern matching, length limits |
-| Fallback extraction | 6 tests | Abstract/TLDR handling |
-| Integration | 6 tests | Strategy orchestration, quality classification |
-
-### metadata_utils.py Coverage
-
-| Category | Tests | Coverage |
-|----------|-------|----------|
-| Basic field extraction | 7 tests | paperId, title, abstract, year, publicationDate |
-| Author handling | 5 tests | Single/multiple authors, missing names, unicode |
-| Citation counts | 4 tests | Extraction and default values |
-| JSON serialization | 4 tests | externalIds, fieldsOfStudy to JSON strings |
-| Safe nested access | 6 tests | PDF URL, TLDR with safe_get function |
-| Default fields | 6 tests | introduction, extraction_method, status, etc. |
-| Timestamps | 3 tests | scraped_at format validation |
-| Edge cases | 9 tests | Empty objects, None values, special characters |
-
-### processor.py Coverage
-
-| Category | Tests | Coverage |
-|----------|-------|----------|
-| Basic functionality | 3 tests | Single/multiple papers, empty input |
-| Content extraction | 3 tests | Success, failure, empty content handling |
-| Extraction methods | 4 tests | ArXiv, GROBID, Regex, Fallback integration |
-| Rate limiting | 2 tests | Sleep between papers, duration validation |
-| Mixed results | 1 test | Handling successes and failures together |
-| Logging | 2 tests | Log output, missing title handling |
-| Edge cases | 3 tests | Long content, search term passing, extractor reuse |
-
----
-
-## How to Run Tests
-
-### Basic Commands
-
-```bash
-# Run all tests
-python -m pytest tests/unit/ -v
-
-# Run specific test file
-python -m pytest tests/unit/test_semantic_scholar_client.py -v
-
-# Run with coverage report
-python -m pytest tests/unit/ --cov=src/data_pipeline --cov-report=html
-
-# Run specific test
-python -m pytest tests/unit/test_semantic_scholar_client.py::TestSearchSemanticScholar::test_retry_on_timeout_exception -v
-```
-
-### Test Output
-
-```
-tests/unit/test_semantic_scholar_client.py::test_successful_search_returns_papers PASSED
-tests/unit/test_content_extractor.py::test_arxiv_html_extraction PASSED
-```
-
-Status indicators:
-- `PASSED` - Test succeeded
-- `FAILED` - Test failed with assertion error
-- `SKIPPED` - Test skipped (dependency unavailable)
-
----
-
-## Test Configuration
-
-### pytest.ini
-
-```ini
-[tool:pytest]
-python_files = test_*.py
-python_classes = Test*
-python_functions = test_*
-testpaths = tests
-```
-
-### requirements-test.txt
-
-```
-pytest==7.4.3
-pytest-cov==4.1.0
-pytest-mock==3.12.0
-pytest-timeout==2.2.0
-responses==0.24.1
-faker==20.1.0
-```
-
----
-
-## Next Steps
-
-### Remaining Modules to Test
-
-**Optional: batch_ingestion.py**
-- Test batch processing logic
-- Validate rate limiting across batches
-- Test progress tracking
-- Estimated: 10-15 tests
-- Note: May not be needed if functionality is covered by processor.py tests
-
-**Recommended: Integration & Data Quality Tests**
-- End-to-end pipeline tests
-- Schema validation tests
-- Anomaly detection tests
-- Bias detection tests
-- Estimated: 15-20 tests
-
-### Coverage Goals
-
-| Module | Current Coverage | Target | Status |
-|--------|------------------|--------|--------|
-| semantic_scholar_client.py | ~95% | 80% | Complete |
-| content_extractor.py | ~90% | 80% | Complete |
-| metadata_utils.py | ~95% | 80% | Complete |
-| processor.py | ~90% | 80% | Complete |
-| batch_ingestion.py | Not started | 80% | Optional |
-| **Overall Pipeline** | **~75%** | **80%** | **Near Target** |
-
----
-
-## Test Development Workflow
-
-### For Each New Module
-
-1. **Analyze the module**
-   - Identify all functions/methods
-   - List all code paths (if/else branches)
-   - Note external dependencies
-
-2. **Create test file**
-   - Follow naming convention: `test_[module_name].py`
-   - Organize tests into classes by functionality
-   - Use descriptive test names
-
-3. **Write tests**
-   - Start with happy path scenarios
-   - Add error handling tests
-   - Include edge cases
-   - Aim for 80%+ coverage
-
-4. **Verify coverage**
-   ```bash
-   pytest --cov=src/data_pipeline/[module] --cov-report=term
-   ```
-
-5. **Refine tests**
-   - Add missing test cases
-   - Improve assertions
-   - Document complex scenarios
-
----
-
-## Common Testing Patterns
-
-### Pattern 1: Testing with Mocks
-
-```python
-@patch('module.external_function')
-def test_function_calls_external(mock_external):
-    # Arrange
-    mock_external.return_value = "mocked response"
-    
-    # Act
-    result = my_function()
-    
-    # Assert
-    mock_external.assert_called_once()
-    assert result == "expected output"
-```
-
-### Pattern 2: Testing Retry Logic
-
-```python
-@patch('requests.get')
-def test_retries_on_failure(mock_get):
-    # Arrange - simulate 2 failures then success
-    mock_get.side_effect = [
-        Mock(status_code=500),
-        Mock(status_code=500),
-        Mock(status_code=200, json=lambda: {'data': []})
-    ]
-    
-    # Act
-    result = fetch_with_retry("query", retries=3)
-    
-    # Assert
-    assert mock_get.call_count == 3
-```
-
-### Pattern 3: Parametrized Tests
-
-```python
-@pytest.mark.parametrize("input,expected", [
-    (5, "positive"),
-    (-5, "negative"),
-    (0, "zero"),
-])
-def test_classify_number(input, expected):
-    assert classify(input) == expected
-```
-
----
-
-## Skipped Tests
-
-### Current Skipped Tests (5 total)
-
-**GROBID Tests (4 tests)**
-- Reason: GROBID library not installed
-- Impact: Optional dependency, not critical for basic functionality
-- Tests will pass if GROBID is installed
-
-**Regex PDF Extraction (1 test)**
-- Reason: Pytest-specific mocking issue
-- Impact: None - functionality verified independently through debug tests
-- Code proven to work correctly in isolation
-
----
-
-## Grading Criteria Alignment
-
-### Project Requirements Met
-
-1. **Test Modules**: Unit tests for each pipeline component
-2. **Modular Code**: Each test is independent and reusable
-3. **Pipeline Orchestration**: Integration tests validate workflow
-4. **Tracking and Logging**: Tests verify logging behavior
-5. **Error Handling**: Comprehensive error scenario testing
-6. **Reproducibility**: Tests run identically on any machine
-7. **Test Coverage**: Targeting 80%+ on all modules
-
----
-
-## Summary
-
-### What We've Built
-
-- Comprehensive test suite for 2 core modules
-- 67 tests with 100% pass rate (excluding expected skips)
-- Fast execution time (~0.3 seconds)
-- Proper mocking of external dependencies
-- Clear test organization and documentation
-
-### What's Next
-
-Continue building tests for remaining modules:
-1. metadata_utils.py (next priority)
-2. processor.py
-3. batch_ingestion.py
-4. Integration and data quality tests
-
-### Goal
-
-Achieve 80%+ test coverage across entire data pipeline while maintaining fast, reliable, and maintainable tests.
