@@ -1,0 +1,10 @@
+{
+  "papers_collected": 5,
+  "query": "semiconductor export restrictions",
+  "limit_requested": 5,
+  "collection_time_seconds": 60.960045,
+  "timestamp": "2025-10-24T08:35:46.644766",
+  "run_id": "20251024_083546",
+  "success_rate": 1.0,
+  "api_calls": 1
+}
