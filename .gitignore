@@ -1,28 +1,93 @@
+# Python
 __pycache__/
-venv/
-.env
-data/raw/*
-data/processed/*
-*.pyc
-logs/
-data/
-*.parquet
-*.csv
-.ipynb_checkpoints/
-# Virtual environments
-.venv_test/
-.venv/
-env/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+.installed.cfg
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
 
-# Test artifacts
+# Virtual Environments
+venv/
+env/
+ENV/
+citeConnectEnv/
+.venv
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
 .pytest_cache/
 .coverage
 htmlcov/
-coverage.xml
 *.cover
-.hypothesis/
+.tox/
 
-# Test outputs
-tests/fixtures/temp/
-test_outputs/
+# MyPy
+.mypy_cache/
+.dmypy.json
+
+# Data and Logs
+data/
+data/healthcare/*.parquet
+data/finance/*.parquet
+data/quantum/*.parquet
+*.csv
+*.parquet
+*.pkl
+*.log
+*.db
+*.sqlite3
+logs/
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Node modules (if any frontend code is added later)
+node_modules/
+
+# Cloud credentials
+*.json
+!requirements*.json
+service-account*.json
+gcs-credentials.json
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Redis
+*.rdb
+
+# # ChromaDB specific (commented out)
+# chroma/
+# .chroma/
