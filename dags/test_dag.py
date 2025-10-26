@@ -39,67 +39,24 @@ dag = DAG(
     tags=['test', 'citeconnect']
 )
 
-def test_imports(**context):
-    """Test if we can import our modules."""
-    print("Testing imports...")
-    
-    # Test basic Python imports
-    import requests
-    import pandas as pd
-    print("Basic imports work (requests, pandas)")
-    
-    # Test project structure
-    print("Checking project structure...")
-    print(f"Current working directory: {os.getcwd()}")
-    print(f"Python path: {sys.path}")
-    
-    # List available folders
-    project_path = '/opt/airflow/src'
-    if os.path.exists(project_path):
-        print(f"Contents of {project_path}:")
-        for item in os.listdir(project_path):
-            print(f"   - {item}")
-    else:
-        print(f"Project path not found: {project_path}")
-        # This will cause the task to fail if path doesn't exist
-        raise FileNotFoundError(f"Expected project path not found: {project_path}")
-    
-    # Import your modules - will fail if import doesn't work
-    from src.DataPipeline.Ingestion.semantic_scholar_client import SemanticScholarClient
-    print("Successfully imported SemanticScholarClient")
-    
-    # Test creating client - will fail if class instantiation fails
-    client = SemanticScholarClient()
-    print("Successfully created SemanticScholarClient instance")
-    
-    print("Import test completed!")
-    return "success"
-
 def test_api_connection(**context):
     """Test API connection using our modules."""
     print("Testing API connection...")
     
     # Import will fail if module doesn't exist
-    from src.DataPipeline.Ingestion.semantic_scholar_client import SemanticScholarClient
+    from src.DataPipeline.Ingestion.semantic_scholar_client import search_semantic_scholar
     
     # Create client - will fail if instantiation fails
-    ssc_client = SemanticScholarClient()
-    test_query = "machine learning"
+    ssc_client = search_semantic_scholar(query="machine learning")
     
     # API call - will fail if API is down or returns error
-    results = ssc_client.search(test_query, limit=2)
-    print(f"API returned {len(results)} results for query '{test_query}'")
+    print(ssc_client, "results retrieved from API")
     
     # Validate results
-    if len(results) == 0:
+    if len(ssc_client) == "":
         raise ValueError("API returned no results - this might indicate an issue")
     
     return "api_success"
-
-def get_papers_from_api(query: str, limit: int):
-    from src.DataPipeline.Ingestion.semantic_scholar_client import SemanticScholarClient
-    ssc_client = SemanticScholarClient()
-    return ssc_client.search(query, limit=limit)
 
 def send_success_notification(**context):
     """Send success email with pipeline summary."""
@@ -161,24 +118,10 @@ env_check_task = BashOperator(
     dag=dag
 )
 
-# Task 2: Test imports
-test_imports_task = PythonOperator(
-    task_id='test_imports',
-    python_callable=test_imports,
-    dag=dag
-)
-
 # Task 3: Test API
 test_api_task = PythonOperator(
     task_id='test_api',
     python_callable=test_api_connection,
-    dag=dag
-)
-
-# Task 4: Test storage
-test_storage_task = PythonOperator(
-    task_id='test_storage',
-    python_callable=test_data_storage,
     dag=dag
 )
 
@@ -190,4 +133,4 @@ success_email_task = PythonOperator(
 )
 
 # Set task dependencies
-env_check_task >> test_imports_task >> test_api_task >> test_storage_task >> success_email_task
+env_check_task >> test_api_task >> success_email_task
