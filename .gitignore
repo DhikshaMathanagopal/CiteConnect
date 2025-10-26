@@ -5,69 +5,7 @@ __pycache__/
 *.so
 *.egg
 *.egg-info/
-dist/
-build/
-.eggs/
-.Python
-
-# Virtual Environments
-venv/
-env/
-ENV/
-citeConnectEnv
-.venv
-
-# Environment Variables
-.env
-.env.local
-.env.*.local
-
-# IDEs
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
-
-# Data and Logs
-data/
-*.log
-*.db
-*.sqlite3
-
-# # ChromaDB specific
-# chroma/
-# .chroma/
-
-# Pytest
-.pytest_cache/
-.coverage
-htmlcov/
-*.cover
-
-# MyPy
-.mypy_cache/
-.dmypy.json
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Project specific
-temp/
-tmp/
-*.tmp
-
-# Node modules (if any frontend code is added later)
-node_modules/
-
-*.rdb
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
+.installed.cfg
 .Python
 build/
 develop-eggs/
@@ -81,48 +19,61 @@ parts/
 sdist/
 var/
 wheels/
-*.egg-info/
-.installed.cfg
-*.egg
 
-# Virtual environments
-citeConnectEnv/
+# Virtual Environments
 venv/
-ENV/
 env/
+ENV/
+citeConnectEnv/
+.venv
 
-# IDE
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# IDEs
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# Environment variables
-.env
-.env.local
+*~
 
 # Testing
 .pytest_cache/
 .coverage
 htmlcov/
+*.cover
 .tox/
 
-# Data
+# MyPy
+.mypy_cache/
+.dmypy.json
+
+# Data and Logs
+data/
 data/healthcare/*.parquet
 data/finance/*.parquet
 data/quantum/*.parquet
 *.csv
 *.parquet
 *.pkl
-
-# Logs
 *.log
+*.db
+*.sqlite3
 logs/
 
 # Temporary files
-*.tmp
 temp/
 tmp/
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node modules (if any frontend code is added later)
+node_modules/
 
 # Cloud credentials
 *.json
@@ -130,9 +81,13 @@ tmp/
 service-account*.json
 gcs-credentials.json
 
-# macOS
-.DS_Store
-
 # Jupyter
 .ipynb_checkpoints/
 *.ipynb
+
+# Redis
+*.rdb
+
+# # ChromaDB specific (commented out)
+# chroma/
+# .chroma/
