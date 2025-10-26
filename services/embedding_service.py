@@ -16,9 +16,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from preprocessing import TextCleaner, DocumentChunker
 from embeddings import EmbeddingGenerator
 
+# Enhanced logging with file and line numbers
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
+    format="%(asctime)s - [%(filename)s:%(lineno)d] - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ logger = logging.getLogger(__name__)
 class EmbeddingService:
     """Main service for processing papers and generating embeddings."""
 
-    def __init__(self, bucket_name: str = "citeconnect-processed-parquet", use_local: bool = False, gcs_prefix: str = "", flat_structure: bool = False):
+    def __init__(self, bucket_name: str = "citeconnect-processed-parquet", use_local: bool = False, gcs_prefix: str = "", flat_structure: bool = False, gcs_project_id: Optional[str] = None):
         """
         Initialize embedding service.
 
@@ -35,6 +36,7 @@ class EmbeddingService:
             use_local: Use local parquet files instead of GCS (for testing)
             gcs_prefix: GCS path prefix (e.g., 'raw/' for citeconnect-test-bucket)
             flat_structure: Files are in flat structure (no domain subfolders)
+            gcs_project_id: GCP project ID for cross-project bucket access
         """
         logger.info("Initializing Embedding Service...")
         
@@ -45,10 +47,12 @@ class EmbeddingService:
             logger.info("📁 Using LOCAL file reader (no GCS credentials needed)")
         else:
             from utils.gcs_reader import GCSReader
-            self.gcs_reader = GCSReader(bucket_name=bucket_name)
+            self.gcs_reader = GCSReader(bucket_name=bucket_name, project_id=gcs_project_id)
             self.gcs_prefix = gcs_prefix  # Store for later use
             self.flat_structure = flat_structure
             logger.info(f"🌐 Using GCS reader for bucket: {bucket_name}")
+            if gcs_project_id:
+                logger.info(f"🏗️  Using project: {gcs_project_id}")
             if gcs_prefix:
                 logger.info(f"📂 GCS prefix: {gcs_prefix}")
             if flat_structure:
@@ -232,23 +236,40 @@ class EmbeddingService:
         for idx, paper in batch_df.iterrows():
             paper_id = paper.get('paperId')
             
-            # Check if paper has introduction
-            if pd.isna(paper.get('has_intro')) or not paper.get('has_intro'):
-                logger.debug(f"⏭️  Skipping paper {paper_id} - has_intro=False")
-                stats["skipped"] += 1
-                continue
+            # Try to get content (prefer introduction, fallback to abstract)
+            content = None
+            content_source = None
             
-            if pd.isna(paper.get('introduction')) or not paper.get('introduction'):
-                logger.debug(f"⏭️  Skipping paper {paper_id} - no introduction text")
+            # First try introduction (regardless of has_intro flag)
+            if pd.notna(paper.get('introduction')) and paper.get('introduction'):
+                content = str(paper['introduction'])
+                content_source = 'introduction'
+                logger.debug(f"Using introduction for paper {paper_id} (method: {paper.get('extraction_method', 'unknown')})")
+            # Fallback to abstract if no introduction
+            elif pd.notna(paper.get('abstract')) and paper.get('abstract'):
+                content = str(paper['abstract'])
+                content_source = 'abstract'
+                logger.debug(f"Using abstract for paper {paper_id} (no introduction available)")
+            
+            if not content:
+                logger.debug(f"⏭️  Skipping paper {paper_id} - no introduction or abstract")
                 stats["skipped"] += 1
                 continue
 
             try:
-                # Extract and validate content
-                introduction = str(paper['introduction'])
-                
                 # Clean text
-                cleaned_text = self.text_cleaner.clean(introduction)
+                cleaned_text = self.text_cleaner.clean(content)
+                
+                if len(cleaned_text) < 200:
+                    logger.debug(
+                        f"⏭️  Skipping paper {paper_id} - text too short after cleaning "
+                        f"({len(cleaned_text)} chars from {content_source})"
+                    )
+                    stats["skipped"] += 1
+                    continue
+
+                # Chunk document
+                chunks = self.chunker.chunk_document(cleaned_text, paper_id)
                 
                 if len(cleaned_text) < 200:
                     logger.debug(f"⏭️  Skipping paper {paper_id} - text too short after cleaning ({len(cleaned_text)} chars)")
@@ -357,6 +378,12 @@ Examples:
         help="GCS path prefix (default: raw/)"
     )
     parser.add_argument(
+        "--gcs-project",
+        dest="gcs_project",
+        default="strange-calling-476017-r5",
+        help="GCP project ID for bucket access (default: strange-calling-476017-r5)"
+    )
+    parser.add_argument(
         "--flat-structure",
         action="store_true",
         help="Files are in flat structure (no domain subfolders in GCS)"
@@ -384,7 +411,8 @@ Examples:
             bucket_name=args.bucket, 
             use_local=args.local,
             gcs_prefix=args.gcs_prefix,
-            flat_structure=args.flat_structure
+            flat_structure=args.flat_structure,
+            gcs_project_id=args.gcs_project if not args.local else None
         )
         
         # Process domain

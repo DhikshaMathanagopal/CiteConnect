@@ -16,19 +16,46 @@ logger = logging.getLogger(__name__)
 class GCSReader:
     """Read parquet files from Google Cloud Storage."""
 
-    def __init__(self, bucket_name: str = "citeconnect-processed-parquet"):
+    def __init__(self, bucket_name: str = "citeconnect-processed-parquet", project_id: Optional[str] = None):
         """
         Initialize GCS reader.
 
         Args:
             bucket_name: GCS bucket name (default: citeconnect-processed-parquet)
+            project_id: GCP project ID (optional, for cross-project access)
         """
         from google.cloud import storage
+        import os
         
         self.bucket_name = bucket_name
+        
+        # Check if credentials file is set
+        creds_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+        if creds_path:
+            logger.info(f"🔑 Using credentials from: {creds_path}")
+        
         try:
-            self.client = storage.Client()
+            # Initialize client with specific project if provided
+            if project_id:
+                self.client = storage.Client(project=project_id)
+                logger.info(f"✅ Connected to GCS using project: {project_id}")
+            else:
+                # Let SDK auto-detect project from credentials
+                self.client = storage.Client()
+                logger.info(f"✅ Connected to GCS with default project")
+            
             self.bucket = self.client.bucket(bucket_name)
+            
+            # Try to verify bucket access
+            try:
+                bucket_exists = self.bucket.exists()
+                if bucket_exists:
+                    logger.info(f"✅ Verified bucket exists: {bucket_name}")
+                else:
+                    logger.warning(f"⚠️ Bucket may not exist: {bucket_name}")
+            except Exception as verify_error:
+                logger.warning(f"⚠️ Could not verify bucket: {verify_error}")
+            
             logger.info(f"✅ Connected to GCS bucket: {bucket_name}")
         except Exception as e:
             logger.error(f"❌ Failed to connect to GCS: {e}")
@@ -67,11 +94,20 @@ class GCSReader:
             DataFrame or None on failure
         """
         try:
+            logger.info(f"📥 Attempting to download: gs://{self.bucket_name}/{blob_path}")
             blob = self.bucket.blob(blob_path)
+            
+            # Check if blob exists before downloading
+            if not blob.exists():
+                logger.error(f"❌ Blob does not exist: gs://{self.bucket_name}/{blob_path}")
+                return None
+            
+            logger.debug(f"Blob exists, downloading to temp file...")
             
             # Download to temporary file
             with tempfile.NamedTemporaryFile(suffix='.parquet', delete=False) as tmp_file:
-                blob.download_to_filename(tmp_file.name)
+                logger.debug(f"Temp file: {tmp_file.name}")
+                blob.download_to_filename(tmp_file.name)  # ← 403 ERROR HAPPENS HERE
                 df = pd.read_parquet(tmp_file.name)
                 
             # Clean up temp file
@@ -81,7 +117,10 @@ class GCSReader:
             return df
 
         except Exception as e:
-            logger.error(f"❌ Failed to read {blob_path}: {e}")
+            logger.error(
+                f"❌ Failed to read {blob_path}: {e}",
+                exc_info=True  # This adds full stack trace
+            )
             return None
 
     def read_all_from_domain(self, domain: str, custom_prefix: Optional[str] = None, flat_structure: bool = False) -> pd.DataFrame:
