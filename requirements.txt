@@ -1,0 +1,38 @@
+# Core dependencies
+requests>=2.31.0
+pandas>=2.0.0
+beautifulsoup4>=4.12.0
+pymupdf>=1.23.0
+pyarrow>=13.0.0
+python-dotenv>=1.0.0
+
+# Google Cloud
+google-cloud-storage>=2.10.0
+
+# Embeddings & Vector Store
+weaviate-client>=4.4.0
+sentence-transformers>=2.2.0
+torch>=2.0.0
+
+# Optional: OpenAI fallback
+openai>=1.0.0
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-mock>=3.11.0
+responses>=0.23.0
+freezegun>=1.2.2
+faker>=19.0.0
+
+# Data ingestion
+grobid-client-python
+
+# Orchestration (optional for now)
+# apache-airflow>=2.7.0
+
+# Neo4j (for future citation graph)
+# neo4j>=5.0.0
+
+# PostgreSQL (for future metadata store)
+# psycopg2-binary>=2.9.0

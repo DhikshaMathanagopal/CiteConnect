@@ -1,0 +1,39 @@
+# docker-compose.yml
+services:
+  t2v-transformers:
+    image: semitechnologies/transformers-inference:sentence-transformers-all-MiniLM-L6-v2
+    container_name: t2v-transformers
+    ports:
+      - "8081:8080"
+    environment:
+      - ENABLE_CUDA=0
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/.well-known/ready || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 120s
+
+  weaviate:
+    image: semitechnologies/weaviate:latest
+    container_name: weaviate
+    ports:
+      - "8080:8080"
+      - "50051:50051"
+    environment:
+      - QUERY_DEFAULTS_LIMIT=25
+      - AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED=true
+      - PERSISTENCE_DATA_PATH=/var/lib/weaviate
+      - DEFAULT_VECTORIZER_MODULE=text2vec-transformers
+      - ENABLE_MODULES=text2vec-transformers
+      - TRANSFORMERS_INFERENCE_API=http://t2v-transformers:8080
+      - CLUSTER_HOSTNAME=node1
+    depends_on:
+      t2v-transformers:
+        condition: service_healthy
+    volumes:
+      - weaviate-data:/var/lib/weaviate
+    restart: on-failure
+
+volumes:
+  weaviate-data:
