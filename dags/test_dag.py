@@ -128,6 +128,23 @@ def preprocess_papers(**context):
     
     return results
 
+def embed_stored_data():
+    import sys
+    if '/opt/airflow' not in sys.path:
+        sys.path.insert(0, '/opt/airflow')
+
+    from services.embedding_service import EmbeddingService
+    
+    service = EmbeddingService(
+        bucket_name="citeconnect-test-bucket",
+        gcs_prefix="raw/",
+        flat_structure=True,
+        gcs_project_id="strange-calling-476017-r5"
+    )
+    
+    return service.process_domain("healthcare", batch_size=5, max_papers=10, use_streaming=True)
+
+
 def send_success_notification(**context):
     task_instance = context['task_instance']
     dag_run = context['dag_run']
@@ -197,6 +214,12 @@ preprocess_task = PythonOperator(
     dag=dag
 )
 
+embed_task = PythonOperator(
+    task_id='embed_stored_data',
+    python_callable=embed_stored_data,
+    dag=dag
+)
+
 notification_task = PythonOperator(
     task_id='send_success_notification',
     python_callable=send_success_notification,
@@ -204,5 +227,5 @@ notification_task = PythonOperator(
 )
 
 # Set dependencies
-env_check_task >> gcs_check_task >> api_test_task >> collection_test_task >> preprocess_task >> notification_task
+env_check_task >> gcs_check_task >> api_test_task >> collection_test_task >> preprocess_task >> embed_task >> notification_task
 # env_check_task >> gcs_check_task >> api_test_task >> preprocess_task >> notification_task
