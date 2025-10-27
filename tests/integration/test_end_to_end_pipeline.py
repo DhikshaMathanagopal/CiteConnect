@@ -13,10 +13,10 @@ import pytest
 from unittest.mock import Mock, patch
 import json
 
-from data_pipeline.ingestion.semantic_scholar_client import search_semantic_scholar
-from data_pipeline.ingestion.metadata_utils import extract_metadata
-from data_pipeline.ingestion.content_extractor import ContentExtractor
-from data_pipeline.ingestion.processor import process_papers
+from DataPipeline.Ingestion.semantic_scholar_client import search_semantic_scholar
+from DataPipeline.Ingestion.metadata_utils import extract_metadata
+from DataPipeline.Ingestion.content_extractor import ContentExtractor
+from DataPipeline.Ingestion.processor import process_papers
 
 
 # ============================================================================
@@ -86,8 +86,8 @@ def paper_batch(complete_paper, minimal_paper):
 class TestAPIToMetadataFlow:
     """Test the flow from API retrieval to metadata extraction."""
 
-    @patch('data_pipeline.ingestion.semantic_scholar_client.requests.get')
-    @patch('data_pipeline.ingestion.semantic_scholar_client.time.sleep')
+    @patch('DataPipeline.Ingestion.semantic_scholar_client.requests.get')
+    @patch('DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
     def test_api_response_converts_to_metadata(self, mock_sleep, mock_get, complete_paper):
         """Test that API responses are correctly converted to metadata records."""
         # Arrange - Mock API response
@@ -114,8 +114,8 @@ class TestAPIToMetadataFlow:
         external_ids = json.loads(metadata['externalIds'])
         assert external_ids['ArXiv'] == '1706.03762'
 
-    @patch('data_pipeline.ingestion.semantic_scholar_client.requests.get')
-    @patch('data_pipeline.ingestion.semantic_scholar_client.time.sleep')
+    @patch('DataPipeline.Ingestion.semantic_scholar_client.requests.get')
+    @patch('DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
     def test_multiple_papers_api_to_metadata(self, mock_sleep, mock_get, paper_batch):
         """Test batch conversion from API to metadata."""
         # Arrange
@@ -142,10 +142,10 @@ class TestAPIToMetadataFlow:
 class TestCompletePipelineFlow:
     """Test the complete end-to-end pipeline."""
 
-    @patch('data_pipeline.ingestion.processor.time.sleep')
-    @patch('data_pipeline.ingestion.content_extractor.time.sleep')
-    @patch('data_pipeline.ingestion.semantic_scholar_client.requests.get')
-    @patch('data_pipeline.ingestion.semantic_scholar_client.time.sleep')
+    @patch('DataPipeline.Ingestion.processor.time.sleep')
+    @patch('DataPipeline.Ingestion.content_extractor.time.sleep')
+    @patch('DataPipeline.Ingestion.semantic_scholar_client.requests.get')
+    @patch('DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
     def test_end_to_end_single_paper(self, mock_api_sleep, mock_api_get, 
                                       mock_extract_sleep, mock_process_sleep, 
                                       complete_paper):
@@ -182,10 +182,10 @@ class TestCompletePipelineFlow:
         assert 'scraped_at' in result
         assert result['scraped_at'].endswith('Z')
 
-    @patch('data_pipeline.ingestion.processor.time.sleep')
-    @patch('data_pipeline.ingestion.content_extractor.time.sleep')
-    @patch('data_pipeline.ingestion.semantic_scholar_client.requests.get')
-    @patch('data_pipeline.ingestion.semantic_scholar_client.time.sleep')
+    @patch('DataPipeline.Ingestion.processor.time.sleep')
+    @patch('DataPipeline.Ingestion.content_extractor.time.sleep')
+    @patch('DataPipeline.Ingestion.semantic_scholar_client.requests.get')
+    @patch('DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
     def test_end_to_end_batch_processing(self, mock_api_sleep, mock_api_get, 
                                          mock_extract_sleep, mock_process_sleep, 
                                          paper_batch):
@@ -221,8 +221,8 @@ class TestCompletePipelineFlow:
 class TestDataQualityValidation:
     """Test output data quality and schema compliance."""
 
-    @patch('data_pipeline.ingestion.processor.time.sleep')
-    @patch('data_pipeline.ingestion.content_extractor.time.sleep')
+    @patch('DataPipeline.Ingestion.processor.time.sleep')
+    @patch('DataPipeline.Ingestion.content_extractor.time.sleep')
     def test_output_schema_compliance(self, mock_extract_sleep, mock_process_sleep, 
                                       complete_paper):
         """Test that pipeline output complies with expected schema."""
@@ -249,8 +249,8 @@ class TestDataQualityValidation:
         assert isinstance(result['has_intro'], bool)
         assert isinstance(result['intro_length'], int)
 
-    @patch('data_pipeline.ingestion.processor.time.sleep')
-    @patch('data_pipeline.ingestion.content_extractor.time.sleep')
+    @patch('DataPipeline.Ingestion.processor.time.sleep')
+    @patch('DataPipeline.Ingestion.content_extractor.time.sleep')
     def test_all_papers_get_content(self, mock_extract_sleep, mock_process_sleep, 
                                     paper_batch):
         """Test that papers with abstracts get content from fallback."""
@@ -266,8 +266,8 @@ class TestDataQualityValidation:
             # At least papers with abstracts should have content
             assert any(r['introduction'] is not None for r in papers_with_abstract)
 
-    @patch('data_pipeline.ingestion.processor.time.sleep')
-    @patch('data_pipeline.ingestion.content_extractor.time.sleep')
+    @patch('DataPipeline.Ingestion.processor.time.sleep')
+    @patch('DataPipeline.Ingestion.content_extractor.time.sleep')
     def test_extraction_method_distribution(self, mock_extract_sleep, 
                                            mock_process_sleep, paper_batch):
         """Test that extraction is attempted for all papers."""
@@ -295,8 +295,8 @@ class TestDataQualityValidation:
 class TestErrorHandlingRobustness:
     """Test pipeline behavior under error conditions."""
 
-    @patch('data_pipeline.ingestion.processor.time.sleep')
-    @patch('data_pipeline.ingestion.content_extractor.time.sleep')
+    @patch('DataPipeline.Ingestion.processor.time.sleep')
+    @patch('DataPipeline.Ingestion.content_extractor.time.sleep')
     def test_handles_empty_paper_list(self, mock_extract_sleep, mock_process_sleep):
         """Test pipeline handles empty input gracefully."""
         # Act
@@ -306,8 +306,8 @@ class TestErrorHandlingRobustness:
         assert results == []
         assert isinstance(results, list)
 
-    @patch('data_pipeline.ingestion.processor.time.sleep')
-    @patch('data_pipeline.ingestion.content_extractor.time.sleep')
+    @patch('DataPipeline.Ingestion.processor.time.sleep')
+    @patch('DataPipeline.Ingestion.content_extractor.time.sleep')
     def test_handles_malformed_papers(self, mock_extract_sleep, mock_process_sleep):
         """Test pipeline handles malformed paper data gracefully."""
         # Arrange - Papers with various issues (but structurally valid)
@@ -326,8 +326,8 @@ class TestErrorHandlingRobustness:
         assert all('status' in r for r in results)
         assert all('paperId' in r for r in results)
 
-    @patch('data_pipeline.ingestion.semantic_scholar_client.requests.get')
-    @patch('data_pipeline.ingestion.semantic_scholar_client.time.sleep')
+    @patch('DataPipeline.Ingestion.semantic_scholar_client.requests.get')
+    @patch('DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
     def test_api_retry_mechanism_works(self, mock_sleep, mock_get):
         """Test that API retries work in the full pipeline context."""
         # Arrange - First call fails, second succeeds
@@ -351,10 +351,10 @@ class TestErrorHandlingRobustness:
 class TestRealWorldPatterns:
     """Test patterns that reflect real-world usage."""
 
-    @patch('data_pipeline.ingestion.processor.time.sleep')
-    @patch('data_pipeline.ingestion.content_extractor.time.sleep')
-    @patch('data_pipeline.ingestion.semantic_scholar_client.requests.get')
-    @patch('data_pipeline.ingestion.semantic_scholar_client.time.sleep')
+    @patch('DataPipeline.Ingestion.processor.time.sleep')
+    @patch('DataPipeline.Ingestion.content_extractor.time.sleep')
+    @patch('DataPipeline.Ingestion.semantic_scholar_client.requests.get')
+    @patch('DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
     def test_typical_workflow_pattern(self, mock_api_sleep, mock_api_get,
                                       mock_extract_sleep, mock_process_sleep,
                                       complete_paper):
@@ -386,8 +386,8 @@ class TestRealWorldPatterns:
         # Assert - Should have high success rate with fallback
         assert success_rate > 0, "No papers successfully processed"
 
-    @patch('data_pipeline.ingestion.processor.time.sleep')
-    @patch('data_pipeline.ingestion.content_extractor.time.sleep')
+    @patch('DataPipeline.Ingestion.processor.time.sleep')
+    @patch('DataPipeline.Ingestion.content_extractor.time.sleep')
     def test_metadata_preserved_through_pipeline(self, mock_extract_sleep, 
                                                  mock_process_sleep, complete_paper):
         """Test that metadata is preserved throughout the pipeline."""

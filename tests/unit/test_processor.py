@@ -12,15 +12,15 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 import time
 
-from data_pipeline.ingestion.processor import process_papers
+from DataPipeline.Ingestion.processor import process_papers
 
 
 class TestProcessPapersBasic:
     """Test basic paper processing functionality."""
 
-    @patch('data_pipeline.ingestion.processor.time.sleep')
-    @patch('data_pipeline.ingestion.processor.ContentExtractor')
-    @patch('data_pipeline.ingestion.processor.extract_metadata')
+    @patch('DataPipeline.Ingestion.processor.time.sleep')
+    @patch('DataPipeline.Ingestion.processor.ContentExtractor')
+    @patch('DataPipeline.Ingestion.processor.extract_metadata')
     def test_processes_single_paper(self, mock_extract_metadata, mock_content_extractor_class, mock_sleep):
         """Test processing of a single paper."""
         # Arrange
@@ -56,9 +56,9 @@ class TestProcessPapersBasic:
         assert results[0]['intro_length'] == 10  # len('Intro text')
         assert results[0]['status'] == 'success_arxiv_html'
 
-    @patch('data_pipeline.ingestion.processor.time.sleep')
-    @patch('data_pipeline.ingestion.processor.ContentExtractor')
-    @patch('data_pipeline.ingestion.processor.extract_metadata')
+    @patch('DataPipeline.Ingestion.processor.time.sleep')
+    @patch('DataPipeline.Ingestion.processor.ContentExtractor')
+    @patch('DataPipeline.Ingestion.processor.extract_metadata')
     def test_processes_multiple_papers(self, mock_extract_metadata, mock_content_extractor_class, mock_sleep):
         """Test processing of multiple papers."""
         # Arrange
@@ -93,9 +93,9 @@ class TestProcessPapersBasic:
         assert results[2]['paperId'] == 'paper3'
         assert all(r['introduction'] == 'Content' for r in results)
 
-    @patch('data_pipeline.ingestion.processor.time.sleep')
-    @patch('data_pipeline.ingestion.processor.ContentExtractor')
-    @patch('data_pipeline.ingestion.processor.extract_metadata')
+    @patch('DataPipeline.Ingestion.processor.time.sleep')
+    @patch('DataPipeline.Ingestion.processor.ContentExtractor')
+    @patch('DataPipeline.Ingestion.processor.extract_metadata')
     def test_returns_empty_list_for_empty_input(self, mock_extract_metadata, mock_content_extractor_class, mock_sleep):
         """Test that empty input returns empty list."""
         # Arrange
@@ -112,9 +112,9 @@ class TestProcessPapersBasic:
 class TestProcessPapersContentExtraction:
     """Test content extraction integration."""
 
-    @patch('data_pipeline.ingestion.processor.time.sleep')
-    @patch('data_pipeline.ingestion.processor.ContentExtractor')
-    @patch('data_pipeline.ingestion.processor.extract_metadata')
+    @patch('DataPipeline.Ingestion.processor.time.sleep')
+    @patch('DataPipeline.Ingestion.processor.ContentExtractor')
+    @patch('DataPipeline.Ingestion.processor.extract_metadata')
     def test_updates_record_on_successful_extraction(self, mock_extract_metadata, mock_content_extractor_class, mock_sleep):
         """Test that record is updated when content extraction succeeds."""
         # Arrange
@@ -149,9 +149,9 @@ class TestProcessPapersContentExtraction:
         assert results[0]['intro_length'] == 27
         assert results[0]['status'] == 'success_regex_pdf'
 
-    @patch('data_pipeline.ingestion.processor.time.sleep')
-    @patch('data_pipeline.ingestion.processor.ContentExtractor')
-    @patch('data_pipeline.ingestion.processor.extract_metadata')
+    @patch('DataPipeline.Ingestion.processor.time.sleep')
+    @patch('DataPipeline.Ingestion.processor.ContentExtractor')
+    @patch('DataPipeline.Ingestion.processor.extract_metadata')
     def test_handles_failed_extraction(self, mock_extract_metadata, mock_content_extractor_class, mock_sleep):
         """Test that failed extraction sets fail_reason."""
         # Arrange
@@ -176,9 +176,9 @@ class TestProcessPapersContentExtraction:
         assert results[0]['fail_reason'] == 'extraction_failed'
         assert 'has_intro' not in results[0] or results[0].get('has_intro') is None
 
-    @patch('data_pipeline.ingestion.processor.time.sleep')
-    @patch('data_pipeline.ingestion.processor.ContentExtractor')
-    @patch('data_pipeline.ingestion.processor.extract_metadata')
+    @patch('DataPipeline.Ingestion.processor.time.sleep')
+    @patch('DataPipeline.Ingestion.processor.ContentExtractor')
+    @patch('DataPipeline.Ingestion.processor.extract_metadata')
     def test_handles_empty_content_string(self, mock_extract_metadata, mock_content_extractor_class, mock_sleep):
         """Test that empty string content is treated as failure."""
         # Arrange
@@ -206,9 +206,9 @@ class TestProcessPapersContentExtraction:
 class TestProcessPapersExtractionMethods:
     """Test different extraction methods."""
 
-    @patch('data_pipeline.ingestion.processor.time.sleep')
-    @patch('data_pipeline.ingestion.processor.ContentExtractor')
-    @patch('data_pipeline.ingestion.processor.extract_metadata')
+    @patch('DataPipeline.Ingestion.processor.time.sleep')
+    @patch('DataPipeline.Ingestion.processor.ContentExtractor')
+    @patch('DataPipeline.Ingestion.processor.extract_metadata')
     def test_arxiv_html_extraction(self, mock_extract_metadata, mock_content_extractor_class, mock_sleep):
         """Test ArXiv HTML extraction method."""
         # Arrange
@@ -231,9 +231,9 @@ class TestProcessPapersExtractionMethods:
         assert results[0]['content_quality'] == 'high'
         assert results[0]['status'] == 'success_arxiv_html'
 
-    @patch('data_pipeline.ingestion.processor.time.sleep')
-    @patch('data_pipeline.ingestion.processor.ContentExtractor')
-    @patch('data_pipeline.ingestion.processor.extract_metadata')
+    @patch('DataPipeline.Ingestion.processor.time.sleep')
+    @patch('DataPipeline.Ingestion.processor.ContentExtractor')
+    @patch('DataPipeline.Ingestion.processor.extract_metadata')
     def test_grobid_pdf_extraction(self, mock_extract_metadata, mock_content_extractor_class, mock_sleep):
         """Test GROBID PDF extraction method."""
         # Arrange
@@ -255,9 +255,9 @@ class TestProcessPapersExtractionMethods:
         assert results[0]['extraction_method'] == 'grobid_pdf'
         assert results[0]['status'] == 'success_grobid_pdf'
 
-    @patch('data_pipeline.ingestion.processor.time.sleep')
-    @patch('data_pipeline.ingestion.processor.ContentExtractor')
-    @patch('data_pipeline.ingestion.processor.extract_metadata')
+    @patch('DataPipeline.Ingestion.processor.time.sleep')
+    @patch('DataPipeline.Ingestion.processor.ContentExtractor')
+    @patch('DataPipeline.Ingestion.processor.extract_metadata')
     def test_regex_pdf_extraction(self, mock_extract_metadata, mock_content_extractor_class, mock_sleep):
         """Test regex PDF extraction method."""
         # Arrange
@@ -280,9 +280,9 @@ class TestProcessPapersExtractionMethods:
         assert results[0]['content_quality'] == 'medium'
         assert results[0]['status'] == 'success_regex_pdf'
 
-    @patch('data_pipeline.ingestion.processor.time.sleep')
-    @patch('data_pipeline.ingestion.processor.ContentExtractor')
-    @patch('data_pipeline.ingestion.processor.extract_metadata')
+    @patch('DataPipeline.Ingestion.processor.time.sleep')
+    @patch('DataPipeline.Ingestion.processor.ContentExtractor')
+    @patch('DataPipeline.Ingestion.processor.extract_metadata')
     def test_abstract_tldr_fallback(self, mock_extract_metadata, mock_content_extractor_class, mock_sleep):
         """Test abstract+TLDR fallback method."""
         # Arrange
@@ -309,9 +309,9 @@ class TestProcessPapersExtractionMethods:
 class TestProcessPapersRateLimiting:
     """Test rate limiting between papers."""
 
-    @patch('data_pipeline.ingestion.processor.time.sleep')
-    @patch('data_pipeline.ingestion.processor.ContentExtractor')
-    @patch('data_pipeline.ingestion.processor.extract_metadata')
+    @patch('DataPipeline.Ingestion.processor.time.sleep')
+    @patch('DataPipeline.Ingestion.processor.ContentExtractor')
+    @patch('DataPipeline.Ingestion.processor.extract_metadata')
     def test_sleeps_between_papers(self, mock_extract_metadata, mock_content_extractor_class, mock_sleep):
         """Test that sleep is called between processing papers."""
         # Arrange
@@ -335,9 +335,9 @@ class TestProcessPapersRateLimiting:
         for call in mock_sleep.call_args_list:
             assert call[0][0] == 1  # Sleep for 1 second
 
-    @patch('data_pipeline.ingestion.processor.time.sleep')
-    @patch('data_pipeline.ingestion.processor.ContentExtractor')
-    @patch('data_pipeline.ingestion.processor.extract_metadata')
+    @patch('DataPipeline.Ingestion.processor.time.sleep')
+    @patch('DataPipeline.Ingestion.processor.ContentExtractor')
+    @patch('DataPipeline.Ingestion.processor.extract_metadata')
     def test_sleep_duration_is_one_second(self, mock_extract_metadata, mock_content_extractor_class, mock_sleep):
         """Test that sleep duration is 1 second."""
         # Arrange
@@ -359,9 +359,9 @@ class TestProcessPapersRateLimiting:
 class TestProcessPapersMixedResults:
     """Test processing with mixed success/failure scenarios."""
 
-    @patch('data_pipeline.ingestion.processor.time.sleep')
-    @patch('data_pipeline.ingestion.processor.ContentExtractor')
-    @patch('data_pipeline.ingestion.processor.extract_metadata')
+    @patch('DataPipeline.Ingestion.processor.time.sleep')
+    @patch('DataPipeline.Ingestion.processor.ContentExtractor')
+    @patch('DataPipeline.Ingestion.processor.extract_metadata')
     def test_handles_mixed_success_and_failure(self, mock_extract_metadata, mock_content_extractor_class, mock_sleep):
         """Test processing papers with some successes and some failures."""
         # Arrange
@@ -399,10 +399,10 @@ class TestProcessPapersMixedResults:
 class TestProcessPapersLogging:
     """Test logging functionality."""
 
-    @patch('data_pipeline.ingestion.processor.logging')
-    @patch('data_pipeline.ingestion.processor.time.sleep')
-    @patch('data_pipeline.ingestion.processor.ContentExtractor')
-    @patch('data_pipeline.ingestion.processor.extract_metadata')
+    @patch('DataPipeline.Ingestion.processor.logging')
+    @patch('DataPipeline.Ingestion.processor.time.sleep')
+    @patch('DataPipeline.Ingestion.processor.ContentExtractor')
+    @patch('DataPipeline.Ingestion.processor.extract_metadata')
     def test_logs_paper_processing(self, mock_extract_metadata, mock_content_extractor_class, mock_sleep, mock_logging):
         """Test that paper processing is logged."""
         # Arrange
@@ -423,9 +423,9 @@ class TestProcessPapersLogging:
         # Assert
         assert mock_logging.info.call_count >= 2  # At least once per paper
 
-    @patch('data_pipeline.ingestion.processor.time.sleep')
-    @patch('data_pipeline.ingestion.processor.ContentExtractor')
-    @patch('data_pipeline.ingestion.processor.extract_metadata')
+    @patch('DataPipeline.Ingestion.processor.time.sleep')
+    @patch('DataPipeline.Ingestion.processor.ContentExtractor')
+    @patch('DataPipeline.Ingestion.processor.extract_metadata')
     def test_handles_missing_title_in_logging(self, mock_extract_metadata, mock_content_extractor_class, mock_sleep):
         """Test that missing title doesn't crash logging."""
         # Arrange
@@ -445,9 +445,9 @@ class TestProcessPapersLogging:
 class TestProcessPapersEdgeCases:
     """Test edge cases and unusual scenarios."""
 
-    @patch('data_pipeline.ingestion.processor.time.sleep')
-    @patch('data_pipeline.ingestion.processor.ContentExtractor')
-    @patch('data_pipeline.ingestion.processor.extract_metadata')
+    @patch('DataPipeline.Ingestion.processor.time.sleep')
+    @patch('DataPipeline.Ingestion.processor.ContentExtractor')
+    @patch('DataPipeline.Ingestion.processor.extract_metadata')
     def test_handles_very_long_content(self, mock_extract_metadata, mock_content_extractor_class, mock_sleep):
         """Test handling of very long extracted content."""
         # Arrange
@@ -467,9 +467,9 @@ class TestProcessPapersEdgeCases:
         assert results[0]['introduction'] == long_content
         assert results[0]['intro_length'] == 50000
 
-    @patch('data_pipeline.ingestion.processor.time.sleep')
-    @patch('data_pipeline.ingestion.processor.ContentExtractor')
-    @patch('data_pipeline.ingestion.processor.extract_metadata')
+    @patch('DataPipeline.Ingestion.processor.time.sleep')
+    @patch('DataPipeline.Ingestion.processor.ContentExtractor')
+    @patch('DataPipeline.Ingestion.processor.extract_metadata')
     def test_passes_search_term_to_metadata_extraction(self, mock_extract_metadata, mock_content_extractor_class, mock_sleep):
         """Test that search term is passed to metadata extraction."""
         # Arrange
@@ -490,9 +490,9 @@ class TestProcessPapersEdgeCases:
         for call in mock_extract_metadata.call_args_list:
             assert call[0][1] == search_term  # Second argument is search_term
 
-    @patch('data_pipeline.ingestion.processor.time.sleep')
-    @patch('data_pipeline.ingestion.processor.ContentExtractor')
-    @patch('data_pipeline.ingestion.processor.extract_metadata')
+    @patch('DataPipeline.Ingestion.processor.time.sleep')
+    @patch('DataPipeline.Ingestion.processor.ContentExtractor')
+    @patch('DataPipeline.Ingestion.processor.extract_metadata')
     def test_creates_one_extractor_instance(self, mock_extract_metadata, mock_content_extractor_class, mock_sleep):
         """Test that only one ContentExtractor instance is created."""
         # Arrange

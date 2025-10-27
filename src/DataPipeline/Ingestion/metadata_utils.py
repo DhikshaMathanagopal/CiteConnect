@@ -10,6 +10,10 @@ def extract_metadata(paper, search_term):
             if data is None:
                 return default
         return data
+    
+    fields_of_study = paper.get("fieldsOfStudy", [])
+    if hasattr(fields_of_study, 'tolist'):  # Check if it's a NumPy array
+        fields_of_study = fields_of_study.tolist()
 
     return {
         "search_term": search_term,
@@ -22,7 +26,7 @@ def extract_metadata(paper, search_term):
         "authors": ", ".join(a.get("name", "") for a in paper.get("authors", [])),
         "citationCount": paper.get("citationCount", 0),
         "referenceCount": paper.get("referenceCount", 0),
-        "fieldsOfStudy": json.dumps(paper.get("fieldsOfStudy", [])),
+        "fieldsOfStudy": json.dumps(fields_of_study),
         "pdf_url": safe_get(paper, "openAccessPdf", "url"),
         "tldr": safe_get(paper, "tldr", "text"),
         "introduction": None,

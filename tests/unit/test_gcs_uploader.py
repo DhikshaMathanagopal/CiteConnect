@@ -12,13 +12,13 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 from google.cloud import storage
 
-from data_pipeline.ingestion.gcs_uploader import upload_to_gcs
+from DataPipeline.Ingestion.gcs_uploader import upload_to_gcs
 
 
 class TestGCSUploadSuccess:
     """Test successful GCS upload scenarios."""
 
-    @patch('data_pipeline.ingestion.gcs_uploader.storage.Client')
+    @patch('DataPipeline.Ingestion.gcs_uploader.storage.Client')
     def test_successful_upload_returns_true(self, mock_client_class):
         """Test that successful upload returns True."""
         # Arrange
@@ -41,7 +41,7 @@ class TestGCSUploadSuccess:
         # Assert
         assert result is True
 
-    @patch('data_pipeline.ingestion.gcs_uploader.storage.Client')
+    @patch('DataPipeline.Ingestion.gcs_uploader.storage.Client')
     def test_client_initialization_called(self, mock_client_class):
         """Test that storage.Client() is initialized."""
         # Arrange
@@ -59,7 +59,7 @@ class TestGCSUploadSuccess:
         # Assert
         mock_client_class.assert_called_once()
 
-    @patch('data_pipeline.ingestion.gcs_uploader.storage.Client')
+    @patch('DataPipeline.Ingestion.gcs_uploader.storage.Client')
     def test_bucket_accessed_with_correct_name(self, mock_client_class):
         """Test that bucket is accessed with correct name."""
         # Arrange
@@ -79,7 +79,7 @@ class TestGCSUploadSuccess:
         # Assert
         mock_client.bucket.assert_called_once_with(bucket_name)
 
-    @patch('data_pipeline.ingestion.gcs_uploader.storage.Client')
+    @patch('DataPipeline.Ingestion.gcs_uploader.storage.Client')
     def test_blob_created_with_correct_path(self, mock_client_class):
         """Test that blob is created with correct destination path."""
         # Arrange
@@ -99,7 +99,7 @@ class TestGCSUploadSuccess:
         # Assert
         mock_bucket.blob.assert_called_once_with(destination_path)
 
-    @patch('data_pipeline.ingestion.gcs_uploader.storage.Client')
+    @patch('DataPipeline.Ingestion.gcs_uploader.storage.Client')
     def test_upload_from_filename_called(self, mock_client_class):
         """Test that upload_from_filename is called with local path."""
         # Arrange
@@ -123,7 +123,7 @@ class TestGCSUploadSuccess:
 class TestGCSUploadFailures:
     """Test GCS upload failure scenarios."""
 
-    @patch('data_pipeline.ingestion.gcs_uploader.storage.Client')
+    @patch('DataPipeline.Ingestion.gcs_uploader.storage.Client')
     def test_upload_failure_returns_false(self, mock_client_class):
         """Test that upload failure returns False."""
         # Arrange
@@ -144,7 +144,7 @@ class TestGCSUploadFailures:
         # Assert
         assert result is False
 
-    @patch('data_pipeline.ingestion.gcs_uploader.storage.Client')
+    @patch('DataPipeline.Ingestion.gcs_uploader.storage.Client')
     def test_handles_client_initialization_error(self, mock_client_class):
         """Test handling of client initialization errors."""
         # Arrange
@@ -156,7 +156,7 @@ class TestGCSUploadFailures:
         # Assert
         assert result is False
 
-    @patch('data_pipeline.ingestion.gcs_uploader.storage.Client')
+    @patch('DataPipeline.Ingestion.gcs_uploader.storage.Client')
     def test_handles_bucket_access_error(self, mock_client_class):
         """Test handling of bucket access errors."""
         # Arrange
@@ -170,7 +170,7 @@ class TestGCSUploadFailures:
         # Assert
         assert result is False
 
-    @patch('data_pipeline.ingestion.gcs_uploader.storage.Client')
+    @patch('DataPipeline.Ingestion.gcs_uploader.storage.Client')
     def test_handles_blob_creation_error(self, mock_client_class):
         """Test handling of blob creation errors."""
         # Arrange
@@ -187,7 +187,7 @@ class TestGCSUploadFailures:
         # Assert
         assert result is False
 
-    @patch('data_pipeline.ingestion.gcs_uploader.storage.Client')
+    @patch('DataPipeline.Ingestion.gcs_uploader.storage.Client')
     def test_handles_file_not_found_error(self, mock_client_class):
         """Test handling when local file doesn't exist."""
         # Arrange
@@ -212,8 +212,8 @@ class TestGCSUploadFailures:
 class TestGCSUploadLogging:
     """Test logging behavior during GCS operations."""
 
-    @patch('data_pipeline.ingestion.gcs_uploader.logging')
-    @patch('data_pipeline.ingestion.gcs_uploader.storage.Client')
+    @patch('DataPipeline.Ingestion.gcs_uploader.logging')
+    @patch('DataPipeline.Ingestion.gcs_uploader.storage.Client')
     def test_logs_successful_upload(self, mock_client_class, mock_logging):
         """Test that successful upload is logged."""
         # Arrange
@@ -237,8 +237,8 @@ class TestGCSUploadLogging:
         assert bucket_name in call_args
         assert destination_path in call_args
 
-    @patch('data_pipeline.ingestion.gcs_uploader.logging')
-    @patch('data_pipeline.ingestion.gcs_uploader.storage.Client')
+    @patch('DataPipeline.Ingestion.gcs_uploader.logging')
+    @patch('DataPipeline.Ingestion.gcs_uploader.storage.Client')
     def test_logs_upload_failure(self, mock_client_class, mock_logging):
         """Test that upload failure is logged."""
         # Arrange
@@ -265,7 +265,7 @@ class TestGCSUploadLogging:
 class TestGCSUploadEdgeCases:
     """Test edge cases and unusual scenarios."""
 
-    @patch('data_pipeline.ingestion.gcs_uploader.storage.Client')
+    @patch('DataPipeline.Ingestion.gcs_uploader.storage.Client')
     def test_handles_empty_bucket_name(self, mock_client_class):
         """Test handling of empty bucket name."""
         # Arrange
@@ -279,7 +279,7 @@ class TestGCSUploadEdgeCases:
         # Assert
         assert result is False
 
-    @patch('data_pipeline.ingestion.gcs_uploader.storage.Client')
+    @patch('DataPipeline.Ingestion.gcs_uploader.storage.Client')
     def test_handles_empty_destination_path(self, mock_client_class):
         """Test handling of empty destination path."""
         # Arrange
@@ -298,7 +298,7 @@ class TestGCSUploadEdgeCases:
         # Should attempt to create blob with empty path
         mock_bucket.blob.assert_called_once_with("")
 
-    @patch('data_pipeline.ingestion.gcs_uploader.storage.Client')
+    @patch('DataPipeline.Ingestion.gcs_uploader.storage.Client')
     def test_handles_special_characters_in_path(self, mock_client_class):
         """Test handling of special characters in destination path."""
         # Arrange
@@ -319,7 +319,7 @@ class TestGCSUploadEdgeCases:
         assert result is True
         mock_bucket.blob.assert_called_once_with(destination_path)
 
-    @patch('data_pipeline.ingestion.gcs_uploader.storage.Client')
+    @patch('DataPipeline.Ingestion.gcs_uploader.storage.Client')
     def test_handles_nested_destination_paths(self, mock_client_class):
         """Test handling of deeply nested destination paths."""
         # Arrange
@@ -344,7 +344,7 @@ class TestGCSUploadEdgeCases:
 class TestGCSUploadReturnValues:
     """Test return value behavior."""
 
-    @patch('data_pipeline.ingestion.gcs_uploader.storage.Client')
+    @patch('DataPipeline.Ingestion.gcs_uploader.storage.Client')
     def test_returns_boolean_on_success(self, mock_client_class):
         """Test that function returns boolean True on success."""
         # Arrange
@@ -363,7 +363,7 @@ class TestGCSUploadReturnValues:
         assert result is True
         assert isinstance(result, bool)
 
-    @patch('data_pipeline.ingestion.gcs_uploader.storage.Client')
+    @patch('DataPipeline.Ingestion.gcs_uploader.storage.Client')
     def test_returns_boolean_on_failure(self, mock_client_class):
         """Test that function returns boolean False on failure."""
         # Arrange
@@ -387,7 +387,7 @@ class TestGCSUploadExceptionTypes:
         (ConnectionError, "Network error"),
         (Exception, "Generic error")
     ])
-    @patch('data_pipeline.ingestion.gcs_uploader.storage.Client')
+    @patch('DataPipeline.Ingestion.gcs_uploader.storage.Client')
     def test_handles_various_exception_types(self, mock_client_class, exception_type, exception_msg):
         """Test that different exception types are handled gracefully."""
         # Arrange
