@@ -36,7 +36,7 @@ class LocalEmbedder:
         self.embeddings = None
         
         dimension = self.model.get_sentence_embedding_dimension()
-        logger.info(f"✅ Model loaded successfully (dimension: {dimension})")
+        logger.info(f"Model loaded successfully (dimension: {dimension})")
         
         # Try to load existing embeddings if available
         if os.path.exists(save_path):

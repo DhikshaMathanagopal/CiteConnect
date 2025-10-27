@@ -38,16 +38,16 @@ class EmbeddingGenerator:
         if self.provider == 'local':
             from .local_embedder import LocalEmbedder
             self.local_embedder = LocalEmbedder()
-            logger.info(f"✅ Using local sentence-transformers (model: {config.local_model})")
+            logger.info(f"Using local sentence-transformers (model: {config.local_model})")
             
         elif self.provider == 'weaviate':
             from .vector_store import WeaviateStore
             self.vector_store = WeaviateStore()
-            logger.info("✅ Using Weaviate's built-in vectorization")
+            logger.info("Using Weaviate's built-in vectorization")
             
         elif self.provider == 'openai':
             self._init_openai()
-            logger.info(f"✅ Using OpenAI model: {config.openai_model}")
+            logger.info(f"Using OpenAI model: {config.openai_model}")
             
         else:
             raise ValueError(

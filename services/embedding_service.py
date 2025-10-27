@@ -63,7 +63,7 @@ class EmbeddingService:
         self.chunker = DocumentChunker(chunk_size=512, overlap=50)
         self.embedder = EmbeddingGenerator()
         
-        logger.info("✅ Embedding Service initialized successfully")
+        logger.info("Embedding Service initialized successfully")
 
     def process_domain(
         self,
@@ -84,7 +84,7 @@ class EmbeddingService:
         Returns:
             Dict[str, int]: Statistics dict with processing counts
         """
-        logger.info(f"🚀 Starting processing for domain: {domain}")
+        logger.info(f"Starting processing for domain: {domain}")
         
         if use_streaming:
             return self._process_domain_streaming(domain, batch_size, max_papers)
@@ -99,7 +99,7 @@ class EmbeddingService:
     ) -> Dict[str, int]:
         """Standard processing - loads all data into memory."""
         # Load all parquet files from domain
-        logger.info(f"📂 Loading parquet files from domain: {domain}")
+        logger.info(f"Loading parquet files from domain: {domain}")
         
         # Use custom prefix if GCS is being used
         if hasattr(self, 'gcs_prefix') and self.gcs_prefix:
@@ -119,7 +119,7 @@ class EmbeddingService:
             df = self.gcs_reader.read_all_from_domain(domain)
         
         if df.empty:
-            logger.error(f"❌ No data found for domain: {domain}")
+            logger.error(f"No data found for domain: {domain}")
             return {
                 "error": "No data found",
                 "total_papers": 0,
@@ -131,9 +131,9 @@ class EmbeddingService:
 
         if max_papers:
             df = df.head(max_papers)
-            logger.info(f"📊 Limited to {max_papers} papers for processing")
+            logger.info(f"Limited to {max_papers} papers for processing")
 
-        logger.info(f"📚 Loaded {len(df)} papers from domain: {domain}")
+        logger.info(f"Loaded {len(df)} papers from domain: {domain}")
         
         # Process in batches
         stats = {
@@ -150,7 +150,7 @@ class EmbeddingService:
             total_batches = (len(df) - 1) // batch_size + 1
             
             logger.info(f"\n{'='*60}")
-            logger.info(f"📦 Processing batch {batch_num}/{total_batches} ({len(batch_df)} papers)")
+            logger.info(f"Processing batch {batch_num}/{total_batches} ({len(batch_df)} papers)")
             logger.info(f"{'='*60}")
             
             batch_stats = self._process_batch(batch_df)
@@ -169,7 +169,7 @@ class EmbeddingService:
                 f"Embedded={batch_stats['embedded']}"
             )
 
-        logger.info(f"\n✅ Domain processing complete")
+        logger.info(f"\nDomain processing complete")
         return stats
 
     def _process_domain_streaming(
@@ -182,7 +182,7 @@ class EmbeddingService:
         Memory-efficient streaming processing.
         Uses generator to process batches without loading all data.
         """
-        logger.info(f"🌊 Using streaming mode for domain: {domain}")
+        logger.info(f"Using streaming mode for domain: {domain}")
         
         stats = {
             "total_papers": 0,
@@ -211,7 +211,7 @@ class EmbeddingService:
                 logger.info(f"Trimming batch to {remaining} papers to respect max_papers")
 
             logger.info(f"\n{'='*60}")
-            logger.info(f"📦 Processing streamed batch {batch_num}")
+            logger.info(f"Processing streamed batch {batch_num}")
             logger.info(f"{'='*60}")
             
             batch_stats = self._process_batch(batch_df)
@@ -225,7 +225,7 @@ class EmbeddingService:
             
             papers_processed += len(batch_df)
 
-        logger.info(f"\n✅ Streaming processing complete")
+        logger.info(f"\nStreaming processing complete")
         return stats
 
     def _process_batch(self, batch_df: pd.DataFrame) -> Dict[str, int]:
@@ -252,7 +252,7 @@ class EmbeddingService:
                 logger.debug(f"Using abstract for paper {paper_id} (no introduction available)")
             
             if not content:
-                logger.debug(f"⏭️  Skipping paper {paper_id} - no introduction or abstract")
+                logger.debug(f"  Skipping paper {paper_id} - no introduction or abstract")
                 stats["skipped"] += 1
                 continue
 
@@ -262,7 +262,7 @@ class EmbeddingService:
                 
                 if len(cleaned_text) < 200:
                     logger.debug(
-                        f"⏭️  Skipping paper {paper_id} - text too short after cleaning "
+                        f"  Skipping paper {paper_id} - text too short after cleaning "
                         f"({len(cleaned_text)} chars from {content_source})"
                     )
                     stats["skipped"] += 1
@@ -272,7 +272,7 @@ class EmbeddingService:
                 chunks = self.chunker.chunk_document(cleaned_text, paper_id)
                 
                 if len(cleaned_text) < 200:
-                    logger.debug(f"⏭️  Skipping paper {paper_id} - text too short after cleaning ({len(cleaned_text)} chars)")
+                    logger.debug(f"  Skipping paper {paper_id} - text too short after cleaning ({len(cleaned_text)} chars)")
                     stats["skipped"] += 1
                     continue
 
@@ -280,7 +280,7 @@ class EmbeddingService:
                 chunks = self.chunker.chunk_document(cleaned_text, paper_id)
                 
                 if not chunks:
-                    logger.warning(f"⚠️  No chunks generated for paper {paper_id}")
+                    logger.warning(f"  No chunks generated for paper {paper_id}")
                     stats["skipped"] += 1
                     continue
 
@@ -303,30 +303,30 @@ class EmbeddingService:
                 stats["processed"] += 1
                 stats["chunks"] += len(chunks)
                 
-                logger.debug(f"✅ Processed paper {paper_id}: {len(chunks)} chunks created")
+                logger.debug(f" Processed paper {paper_id}: {len(chunks)} chunks created")
 
             except Exception as e:
-                logger.error(f"❌ Failed to process paper {paper_id}: {e}", exc_info=True)
+                logger.error(f" Failed to process paper {paper_id}: {e}", exc_info=True)
                 stats["skipped"] += 1
 
         # Generate embeddings for batch
         if batch_chunks:
-            logger.info(f"🧬 Generating embeddings for {len(batch_chunks)} chunks...")
+            logger.info(f" Generating embeddings for {len(batch_chunks)} chunks...")
             try:
                 results = self.embedder.embed_chunks(batch_chunks, show_progress=False)
                 stats["embedded"] = sum(1 for r in results if r.success)
                 
                 if stats["embedded"] < len(batch_chunks):
                     logger.warning(
-                        f"⚠️ Only {stats['embedded']}/{len(batch_chunks)} chunks embedded successfully"
+                        f" Only {stats['embedded']}/{len(batch_chunks)} chunks embedded successfully"
                     )
                 else:
-                    logger.info(f"✅ Successfully embedded all {stats['embedded']} chunks")
+                    logger.info(f" Successfully embedded all {stats['embedded']} chunks")
             except Exception as e:
-                logger.error(f"❌ Embedding generation failed: {e}", exc_info=True)
+                logger.error(f" Embedding generation failed: {e}", exc_info=True)
                 stats["embedded"] = 0
         else:
-            logger.info("ℹ️  No chunks to embed in this batch")
+            logger.info("  No chunks to embed in this batch")
 
         return stats
 
@@ -436,16 +436,16 @@ Examples:
         print(f"Embedded Chunks:   {stats.get('embedded_chunks', 0)}")
         
         if stats.get('embedded_chunks', 0) > 0:
-            print("\n✅ SUCCESS: Embeddings generated and stored")
+            print("\n SUCCESS: Embeddings generated and stored")
         else:
-            print("\n⚠️  WARNING: No embeddings were generated")
+            print("\n  WARNING: No embeddings were generated")
         
         print("="*60 + "\n")
         
         return 0 if stats.get('embedded_chunks', 0) > 0 else 1
         
     except Exception as e:
-        logger.error(f"\n❌ FATAL ERROR: {e}", exc_info=True)
+        logger.error(f"\n FATAL ERROR: {e}", exc_info=True)
         print("\n" + "="*60)
         print("EMBEDDING SERVICE - FAILED")
         print("="*60)
