@@ -23,7 +23,7 @@ def extract_metadata(paper, search_term):
         "abstract": paper.get("abstract"),
         "year": paper.get("year"),
         "publicationDate": paper.get("publicationDate"),
-        "authors": ", ".join(a.get("name", "") for a in paper.get("authors", [])),
+        "authors": ", ".join(a.get("name", "") for a in (paper.get("authors", []) if isinstance(paper.get("authors"), list) else [])),
         "citationCount": paper.get("citationCount", 0),
         "referenceCount": paper.get("referenceCount", 0),
         "fieldsOfStudy": json.dumps(fields_of_study),

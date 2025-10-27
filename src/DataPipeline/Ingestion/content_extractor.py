@@ -167,7 +167,7 @@ class ContentExtractor:
                     break
 
             intro = remaining[:end_pos] if end_pos else remaining[:10000]
-            intro = re.sub(r'\s+', ' ', intro).trim()
+            intro = re.sub(r'\s+', ' ', intro).strip()
 
             if 200 < len(intro) < 15000:
                 logging.info(f"Regex extracted: {len(intro)} characters")
@@ -204,7 +204,8 @@ class ContentExtractor:
             if intro:
                 return intro, "arxiv_html", "high"
 
-        pdf_url = paper.get("openAccessPdf", {}).get("url")
+        pdf_dict = paper.get("openAccessPdf")
+        pdf_url = pdf_dict.get("url") if isinstance(pdf_dict, dict) else None
         if pdf_url:
             intro = self.extract_with_grobid(pdf_url)
             if intro:
