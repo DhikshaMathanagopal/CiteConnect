@@ -13,7 +13,7 @@ import requests
 from unittest.mock import Mock, patch, MagicMock
 import time
 
-from DataPipeline.Ingestion.semantic_scholar_client import search_semantic_scholar
+from src.DataPipeline.Ingestion.semantic_scholar_client import search_semantic_scholar
 
 
 class TestSearchSemanticScholar:
@@ -23,8 +23,8 @@ class TestSearchSemanticScholar:
     # SUCCESSFUL RESPONSE TESTS
     # ========================================================================
 
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.requests.get')
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.requests.get')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
     def test_successful_search_returns_papers(self, mock_sleep, mock_get):
         """Test that successful API call returns paper data."""
         # Arrange
@@ -52,8 +52,8 @@ class TestSearchSemanticScholar:
         mock_get.assert_called_once()
         mock_sleep.assert_not_called()  # No retry needed
 
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.requests.get')
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.requests.get')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
     def test_successful_search_with_multiple_papers(self, mock_sleep, mock_get):
         """Test that multiple papers are returned correctly."""
         # Arrange
@@ -74,8 +74,8 @@ class TestSearchSemanticScholar:
         assert len(result) == 5
         assert all('paperId' in paper for paper in result)
 
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.requests.get')
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.requests.get')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
     def test_empty_results_returns_empty_list(self, mock_sleep, mock_get):
         """Test that empty API response returns empty list."""
         # Arrange
@@ -95,8 +95,8 @@ class TestSearchSemanticScholar:
     # URL CONSTRUCTION TESTS
     # ========================================================================
 
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.requests.get')
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.requests.get')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
     def test_url_contains_correct_query(self, mock_sleep, mock_get):
         """Test that URL is constructed with correct query parameter."""
         # Arrange
@@ -115,8 +115,8 @@ class TestSearchSemanticScholar:
         assert f"query={query}" in called_url
         assert "limit=10" in called_url
 
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.requests.get')
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.requests.get')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
     def test_url_contains_all_required_fields(self, mock_sleep, mock_get):
         """Test that URL includes all required metadata fields."""
         # Arrange
@@ -138,8 +138,8 @@ class TestSearchSemanticScholar:
         for field in required_fields:
             assert field in called_url
 
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.requests.get')
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.requests.get')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
     def test_custom_limit_parameter(self, mock_sleep, mock_get):
         """Test that custom limit is applied correctly."""
         # Arrange
@@ -159,8 +159,8 @@ class TestSearchSemanticScholar:
     # ERROR HANDLING & RETRY TESTS
     # ========================================================================
 
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.requests.get')
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.requests.get')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
     def test_retry_on_failed_request(self, mock_sleep, mock_get):
         """Test that function retries on failed requests."""
         # Arrange
@@ -179,8 +179,8 @@ class TestSearchSemanticScholar:
         assert len(result) == 1
         assert result[0]['paperId'] == 'success'
 
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.requests.get')
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.requests.get')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
     def test_returns_empty_list_after_all_retries_exhausted(self, mock_sleep, mock_get):
         """Test that empty list is returned when all retries fail."""
         # Arrange
@@ -198,8 +198,8 @@ class TestSearchSemanticScholar:
         assert mock_get.call_count == 3
         assert mock_sleep.call_count == 3
 
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.requests.get')
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.requests.get')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
     def test_retry_on_timeout_exception(self, mock_sleep, mock_get):
         """Test retry behavior on timeout exceptions."""
         # Arrange
@@ -216,8 +216,8 @@ class TestSearchSemanticScholar:
         assert len(result) == 1
         assert result[0]['paperId'] == 'recovered'
 
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.requests.get')
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.requests.get')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
     def test_retry_on_connection_error(self, mock_sleep, mock_get):
         """Test retry behavior on connection errors."""
         # Arrange
@@ -233,8 +233,8 @@ class TestSearchSemanticScholar:
         assert mock_get.call_count == 2
         assert result == []
 
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.requests.get')
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.requests.get')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
     def test_sleep_duration_between_retries(self, mock_sleep, mock_get):
         """Test that sleep duration is correct between retries."""
         # Arrange
@@ -259,8 +259,8 @@ class TestSearchSemanticScholar:
     # ========================================================================
 
     @pytest.mark.parametrize("status_code", [400, 403, 404, 429, 500, 502, 503])
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.requests.get')
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.requests.get')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
     def test_non_200_status_codes_trigger_retry(self, mock_sleep, mock_get, status_code):
         """Test that non-200 status codes trigger retry logic."""
         # Arrange
@@ -277,8 +277,8 @@ class TestSearchSemanticScholar:
     # EDGE CASES & SPECIAL SCENARIOS
     # ========================================================================
 
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.requests.get')
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.requests.get')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
     def test_special_characters_in_query(self, mock_sleep, mock_get):
         """Test that special characters in query are handled."""
         # Arrange
@@ -295,8 +295,8 @@ class TestSearchSemanticScholar:
         assert result == []
         assert mock_get.called
 
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.requests.get')
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.requests.get')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
     def test_empty_query_string(self, mock_sleep, mock_get):
         """Test behavior with empty query string."""
         # Arrange
@@ -312,8 +312,8 @@ class TestSearchSemanticScholar:
         assert result == []
         assert mock_get.called
 
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.requests.get')
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.requests.get')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
     def test_zero_limit_parameter(self, mock_sleep, mock_get):
         """Test behavior with limit=0."""
         # Arrange
@@ -329,8 +329,8 @@ class TestSearchSemanticScholar:
         called_url = mock_get.call_args[0][0]
         assert "limit=0" in called_url
 
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.requests.get')
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.requests.get')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
     def test_malformed_json_response(self, mock_sleep, mock_get):
         """Test handling of malformed JSON response."""
         # Arrange
@@ -346,8 +346,8 @@ class TestSearchSemanticScholar:
         assert result == []
         assert mock_get.call_count == 2
 
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.requests.get')
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.requests.get')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
     def test_response_missing_data_field(self, mock_sleep, mock_get):
         """Test handling when response doesn't contain 'data' field."""
         # Arrange
@@ -366,8 +366,8 @@ class TestSearchSemanticScholar:
     # HEADERS & TIMEOUT TESTS
     # ========================================================================
 
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.requests.get')
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.requests.get')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
     def test_request_includes_headers(self, mock_sleep, mock_get):
         """Test that request includes proper headers."""
         # Arrange
@@ -384,8 +384,8 @@ class TestSearchSemanticScholar:
         assert 'headers' in call_kwargs
         assert call_kwargs['headers'] is not None
 
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.requests.get')
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.requests.get')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
     def test_request_includes_timeout(self, mock_sleep, mock_get):
         """Test that request includes timeout parameter."""
         # Arrange
@@ -406,8 +406,8 @@ class TestSearchSemanticScholar:
     # INTEGRATION-LIKE TESTS (with realistic mock data)
     # ========================================================================
 
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.requests.get')
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.requests.get')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
     def test_realistic_paper_data_structure(self, mock_sleep, mock_get):
         """Test with realistic paper data structure from API."""
         # Arrange
@@ -456,8 +456,8 @@ class TestSearchSemanticScholar:
     # PERFORMANCE TESTS
     # ========================================================================
 
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.requests.get')
-    @patch('DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.requests.get')
+    @patch('src.DataPipeline.Ingestion.semantic_scholar_client.time.sleep')
     def test_single_retry_completes_quickly(self, mock_sleep, mock_get):
         """Test that single retry doesn't take excessive time."""
         # Arrange

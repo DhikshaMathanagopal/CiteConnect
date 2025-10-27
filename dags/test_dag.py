@@ -78,15 +78,90 @@ def check_gcs_connection():
         for blob in blobs:
             print(f"  - {blob.name} ({blob.size} bytes)")
 
-def run_unit_tests_bash():
-    """Alternative: Run tests using BashOperator"""
-    # This would be defined as a BashOperator in your DAG
-    bash_command = """
-    cd /opt/airflow && \
-    export PYTHONPATH="/opt/airflow/src:$PYTHONPATH" && \
-    python -m pytest tests/unit/ -v --tb=short --no-header
-    """
-    return bash_command
+def run_unit_tests():
+    """Run unit tests using pytest"""
+    import subprocess
+    import sys
+    import os
+    
+    print("Running unit tests...")
+    
+    # Change to the project directory
+    project_root = '/opt/airflow'
+    os.chdir(project_root)
+    
+    # Add src to Python path for tests
+    if '/opt/airflow/src' not in sys.path:
+        sys.path.insert(0, '/opt/airflow/src')
+    
+    # Check if test directory exists
+    test_dir = os.path.join(project_root, 'tests/Unit')
+    if not os.path.exists(test_dir):
+        print(f"Test directory not found: {test_dir}")
+        return ValueError(f"Test directory not found: {test_dir}")
+    
+    # List test files
+    test_files = []
+    for root, dirs, files in os.walk(test_dir):
+        for file in files:
+            if file.startswith('test_') and file.endswith('.py'):
+                test_files.append(os.path.relpath(os.path.join(root, file), project_root))
+    
+    print(f"Found {len(test_files)} test files:")
+    for test_file in test_files:
+        print(f"  - {test_file}")
+    
+    if not test_files:
+        print("No test files found! Skipping unit tests.")
+        return "no_tests_found"
+    
+    try:
+        # Run pytest with your exact command
+        result = subprocess.run([
+            sys.executable, '-m', 'pytest', 
+            'tests/Unit/', 
+            '-v'
+        ], 
+        capture_output=True, 
+        text=True,
+        cwd=project_root,
+        timeout=300
+        )
+        
+        # Print the output
+        print("PYTEST STDOUT:")
+        print(result.stdout)
+        
+        if result.stderr:
+            print("PYTEST STDERR:")
+            print(result.stderr)
+        
+        # Parse basic results
+        stdout = result.stdout
+        passed_count = stdout.count(' PASSED')
+        failed_count = stdout.count(' FAILED')
+        skipped_count = stdout.count(' SKIPPED')
+        error_count = stdout.count(' ERROR')
+        
+        print(f"\nTest Results Summary:")
+        print(f"  Passed: {passed_count}")
+        print(f"  Failed: {failed_count}")
+        print(f"  Skipped: {skipped_count}")
+        print(f"  Errors: {error_count}")
+        
+        if result.returncode == 0:
+            print("All unit tests passed!")
+            return "tests_passed"
+        else:
+            print(f"Unit tests failed with return code: {result.returncode}")
+            return ValueError(f"Unit tests failed. {failed_count} failures, {error_count} errors.")
+            
+    except subprocess.TimeoutExpired:
+        return ValueError("Unit tests timed out after 5 minutes")
+    except FileNotFoundError:
+        return ValueError("pytest not found. Please add pytest to requirements.txt")
+    except Exception as e:
+        return ValueError(f"Error running unit tests: {e}")
 
 def test_paper_collection():
     from src.DataPipeline.Ingestion.main import collect_papers_only
@@ -197,7 +272,7 @@ gcs_check_task = PythonOperator(
 
 api_test_task = PythonOperator(
     task_id='test_api_connection',
-    python_callable=run_unit_tests_bash,
+    python_callable=run_unit_tests,
     dag=dag
 )
 

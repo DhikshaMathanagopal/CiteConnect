@@ -40,6 +40,7 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/services:/opt/airflow/services
     - ${AIRFLOW_PROJ_DIR:-.}/preprocessing:/opt/airflow/preprocessing
     - ${AIRFLOW_PROJ_DIR:-.}/utils:/opt/airflow/utils
+    - ${AIRFLOW_PROJ_DIR:-.}/tests:/opt/airflow/tests
     - ${AIRFLOW_PROJ_DIR:-.}/embeddings:/opt/airflow/embeddings
     - ${AIRFLOW_PROJ_DIR:-.}/configs/credentials/gcs-key.json:/opt/airflow/configs/credentials/gcs-key.json:ro
     - ${AIRFLOW_PROJ_DIR:-.}/configs:/opt/airflow/configs

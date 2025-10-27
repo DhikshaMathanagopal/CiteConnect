@@ -14,7 +14,7 @@ import json
 from datetime import datetime
 from unittest.mock import patch
 
-from DataPipeline.Ingestion.metadata_utils import extract_metadata
+from src.DataPipeline.Ingestion.metadata_utils import extract_metadata
 
 
 class TestExtractMetadataBasic:
@@ -445,7 +445,7 @@ class TestExtractMetadataDefaultFields:
 class TestExtractMetadataTimestamp:
     """Test timestamp generation."""
 
-    @patch('DataPipeline.Ingestion.metadata_utils.datetime')
+    @patch('src.DataPipeline.Ingestion.metadata_utils.datetime')
     def test_scraped_at_timestamp_format(self, mock_datetime):
         """Test that scraped_at has correct ISO format with Z suffix."""
         # Arrange
