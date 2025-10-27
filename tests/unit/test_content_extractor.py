@@ -13,7 +13,7 @@ import requests
 from unittest.mock import Mock, patch, MagicMock, mock_open
 from bs4 import BeautifulSoup
 
-from data_pipeline.ingestion.content_extractor import ContentExtractor
+from DataPipeline.Ingestion.content_extractor import ContentExtractor
 
 # Check if GROBID is installed
 GROBID_INSTALLED = False
@@ -28,8 +28,8 @@ class TestContentExtractorInitialization:
     """Test ContentExtractor initialization and GROBID setup."""
 
     @pytest.mark.skipif(not GROBID_INSTALLED, reason="GROBID not installed")
-    @patch('data_pipeline.ingestion.content_extractor.GROBID_AVAILABLE', True)
-    @patch('data_pipeline.ingestion.content_extractor.requests.get')
+    @patch('DataPipeline.Ingestion.content_extractor.GROBID_AVAILABLE', True)
+    @patch('DataPipeline.Ingestion.content_extractor.requests.get')
     def test_initialization_with_grobid_available(self, mock_get):
         """Test that GROBID client is initialized when service is available."""
         # Arrange
@@ -44,7 +44,7 @@ class TestContentExtractorInitialization:
             # Assert
             mock_get.assert_called_once_with("http://localhost:8070/api/isalive", timeout=2)
 
-    @patch('data_pipeline.ingestion.content_extractor.GROBID_AVAILABLE', False)
+    @patch('DataPipeline.Ingestion.content_extractor.GROBID_AVAILABLE', False)
     def test_initialization_without_grobid(self):
         """Test initialization when GROBID is not available."""
         # Act
@@ -54,8 +54,8 @@ class TestContentExtractorInitialization:
         assert extractor.grobid_client is None
 
     @pytest.mark.skipif(not GROBID_INSTALLED, reason="GROBID not installed")
-    @patch('data_pipeline.ingestion.content_extractor.GROBID_AVAILABLE', True)
-    @patch('data_pipeline.ingestion.content_extractor.requests.get')
+    @patch('DataPipeline.Ingestion.content_extractor.GROBID_AVAILABLE', True)
+    @patch('DataPipeline.Ingestion.content_extractor.requests.get')
     def test_initialization_grobid_connection_fails(self, mock_get):
         """Test initialization when GROBID service is not responding."""
         # Arrange
@@ -71,8 +71,8 @@ class TestContentExtractorInitialization:
 class TestArxivHtmlExtraction:
     """Test ArXiv HTML extraction strategy (Strategy 1)."""
 
-    @patch('data_pipeline.ingestion.content_extractor.time.sleep')
-    @patch('data_pipeline.ingestion.content_extractor.requests.get')
+    @patch('DataPipeline.Ingestion.content_extractor.time.sleep')
+    @patch('DataPipeline.Ingestion.content_extractor.requests.get')
     def test_successful_arxiv_html_extraction(self, mock_get, mock_sleep):
         """Test successful extraction from ArXiv HTML."""
         # Arrange
@@ -103,8 +103,8 @@ class TestArxivHtmlExtraction:
         assert "introduction paragraph" in result.lower()
         mock_sleep.assert_called_once_with(2)
 
-    @patch('data_pipeline.ingestion.content_extractor.time.sleep')
-    @patch('data_pipeline.ingestion.content_extractor.requests.get')
+    @patch('DataPipeline.Ingestion.content_extractor.time.sleep')
+    @patch('DataPipeline.Ingestion.content_extractor.requests.get')
     def test_arxiv_html_section_not_found(self, mock_get, mock_sleep):
         """Test ArXiv extraction when introduction section is not found."""
         # Arrange
@@ -122,8 +122,8 @@ class TestArxivHtmlExtraction:
         # Assert
         assert result is None
 
-    @patch('data_pipeline.ingestion.content_extractor.time.sleep')
-    @patch('data_pipeline.ingestion.content_extractor.requests.get')
+    @patch('DataPipeline.Ingestion.content_extractor.time.sleep')
+    @patch('DataPipeline.Ingestion.content_extractor.requests.get')
     def test_arxiv_html_fallback_to_text_search(self, mock_get, mock_sleep):
         """Test fallback to searching for 'introduction' in text when section ID not found."""
         # Arrange
@@ -153,8 +153,8 @@ class TestArxivHtmlExtraction:
         assert result is not None
         assert len(result) > 200
 
-    @patch('data_pipeline.ingestion.content_extractor.time.sleep')
-    @patch('data_pipeline.ingestion.content_extractor.requests.get')
+    @patch('DataPipeline.Ingestion.content_extractor.time.sleep')
+    @patch('DataPipeline.Ingestion.content_extractor.requests.get')
     def test_arxiv_html_too_short_content(self, mock_get, mock_sleep):
         """Test that short content (< 200 chars) is rejected."""
         # Arrange
@@ -180,8 +180,8 @@ class TestArxivHtmlExtraction:
         # Assert
         assert result is None
 
-    @patch('data_pipeline.ingestion.content_extractor.time.sleep')
-    @patch('data_pipeline.ingestion.content_extractor.requests.get')
+    @patch('DataPipeline.Ingestion.content_extractor.time.sleep')
+    @patch('DataPipeline.Ingestion.content_extractor.requests.get')
     def test_arxiv_html_404_response(self, mock_get, mock_sleep):
         """Test handling of 404 response from ArXiv."""
         # Arrange
@@ -197,8 +197,8 @@ class TestArxivHtmlExtraction:
         # Assert
         assert result is None
 
-    @patch('data_pipeline.ingestion.content_extractor.time.sleep')
-    @patch('data_pipeline.ingestion.content_extractor.requests.get')
+    @patch('DataPipeline.Ingestion.content_extractor.time.sleep')
+    @patch('DataPipeline.Ingestion.content_extractor.requests.get')
     def test_arxiv_html_timeout_exception(self, mock_get, mock_sleep):
         """Test handling of timeout during ArXiv request."""
         # Arrange
@@ -212,8 +212,8 @@ class TestArxivHtmlExtraction:
         # Assert
         assert result is None
 
-    @patch('data_pipeline.ingestion.content_extractor.time.sleep')
-    @patch('data_pipeline.ingestion.content_extractor.requests.get')
+    @patch('DataPipeline.Ingestion.content_extractor.time.sleep')
+    @patch('DataPipeline.Ingestion.content_extractor.requests.get')
     def test_arxiv_html_rate_limiting(self, mock_get, mock_sleep):
         """Test that rate limiting sleep is called."""
         # Arrange
@@ -234,7 +234,7 @@ class TestArxivHtmlExtraction:
 class TestGrobidExtraction:
     """Test GROBID PDF extraction strategy (Strategy 2)."""
 
-    @patch('data_pipeline.ingestion.content_extractor.GROBID_AVAILABLE', False)
+    @patch('DataPipeline.Ingestion.content_extractor.GROBID_AVAILABLE', False)
     def test_grobid_extraction_when_not_available(self):
         """Test that GROBID extraction returns None when not available."""
         # Arrange
@@ -247,9 +247,9 @@ class TestGrobidExtraction:
         assert result is None
 
     @pytest.mark.skipif(not GROBID_INSTALLED, reason="GROBID not installed")
-    @patch('data_pipeline.ingestion.content_extractor.GROBID_AVAILABLE', True)
-    @patch('data_pipeline.ingestion.content_extractor.time.sleep')
-    @patch('data_pipeline.ingestion.content_extractor.requests.get')
+    @patch('DataPipeline.Ingestion.content_extractor.GROBID_AVAILABLE', True)
+    @patch('DataPipeline.Ingestion.content_extractor.time.sleep')
+    @patch('DataPipeline.Ingestion.content_extractor.requests.get')
     @patch('builtins.open', new_callable=mock_open)
     @patch('os.path.exists')
     @patch('os.remove')
@@ -293,9 +293,9 @@ class TestGrobidExtraction:
         mock_sleep.assert_called_with(2)
         mock_remove.assert_called_once()
 
-    @patch('data_pipeline.ingestion.content_extractor.GROBID_AVAILABLE', True)
-    @patch('data_pipeline.ingestion.content_extractor.time.sleep')
-    @patch('data_pipeline.ingestion.content_extractor.requests.get')
+    @patch('DataPipeline.Ingestion.content_extractor.GROBID_AVAILABLE', True)
+    @patch('DataPipeline.Ingestion.content_extractor.time.sleep')
+    @patch('DataPipeline.Ingestion.content_extractor.requests.get')
     def test_grobid_pdf_download_fails(self, mock_get, mock_sleep):
         """Test GROBID extraction when PDF download fails."""
         # Arrange
@@ -313,9 +313,9 @@ class TestGrobidExtraction:
         # Assert
         assert result is None
 
-    @patch('data_pipeline.ingestion.content_extractor.GROBID_AVAILABLE', True)
-    @patch('data_pipeline.ingestion.content_extractor.time.sleep')
-    @patch('data_pipeline.ingestion.content_extractor.requests.get')
+    @patch('DataPipeline.Ingestion.content_extractor.GROBID_AVAILABLE', True)
+    @patch('DataPipeline.Ingestion.content_extractor.time.sleep')
+    @patch('DataPipeline.Ingestion.content_extractor.requests.get')
     def test_grobid_timeout_during_download(self, mock_get, mock_sleep):
         """Test GROBID extraction when PDF download times out."""
         # Arrange
@@ -332,9 +332,9 @@ class TestGrobidExtraction:
         assert result is None
 
     @pytest.mark.skipif(not GROBID_INSTALLED, reason="GROBID not installed")
-    @patch('data_pipeline.ingestion.content_extractor.GROBID_AVAILABLE', True)
-    @patch('data_pipeline.ingestion.content_extractor.time.sleep')
-    @patch('data_pipeline.ingestion.content_extractor.requests.get')
+    @patch('DataPipeline.Ingestion.content_extractor.GROBID_AVAILABLE', True)
+    @patch('DataPipeline.Ingestion.content_extractor.time.sleep')
+    @patch('DataPipeline.Ingestion.content_extractor.requests.get')
     @patch('builtins.open', new_callable=mock_open)
     @patch('os.path.exists')
     @patch('os.remove')
@@ -376,7 +376,7 @@ class TestGrobidExtraction:
 class TestRegexPdfExtraction:
     """Test regex-based PDF extraction strategy (Strategy 3)."""
 
-    @patch('data_pipeline.ingestion.content_extractor.PDF_SUPPORT', False)
+    @patch('DataPipeline.Ingestion.content_extractor.PDF_SUPPORT', False)
     def test_regex_extraction_when_pdf_support_unavailable(self):
         """Test that regex extraction returns None when PyMuPDF not available."""
         # Arrange
@@ -392,7 +392,7 @@ class TestRegexPdfExtraction:
     def test_successful_regex_extraction(self):
         """Test successful regex-based extraction."""
         # Skip if PyMuPDF not available
-        import data_pipeline.ingestion.content_extractor as ce_module
+        import DataPipeline.Ingestion.content_extractor as ce_module
         if not ce_module.PDF_SUPPORT:
             pytest.skip("PyMuPDF not available")
         
@@ -411,9 +411,9 @@ class TestRegexPdfExtraction:
         This is the methods section.
         """
         
-        with patch('data_pipeline.ingestion.content_extractor.time.sleep') as mock_sleep:
-            with patch('data_pipeline.ingestion.content_extractor.requests.get') as mock_get:
-                with patch('data_pipeline.ingestion.content_extractor.fitz.open') as mock_fitz_open:
+        with patch('DataPipeline.Ingestion.content_extractor.time.sleep') as mock_sleep:
+            with patch('DataPipeline.Ingestion.content_extractor.requests.get') as mock_get:
+                with patch('DataPipeline.Ingestion.content_extractor.fitz.open') as mock_fitz_open:
                     
                     mock_pdf_response = Mock()
                     mock_pdf_response.status_code = 200
@@ -449,10 +449,10 @@ class TestRegexPdfExtraction:
                     mock_sleep.assert_called_with(2)
                     mock_doc.close.assert_called_once()
 
-    @patch('data_pipeline.ingestion.content_extractor.PDF_SUPPORT', True)
-    @patch('data_pipeline.ingestion.content_extractor.time.sleep')
-    @patch('data_pipeline.ingestion.content_extractor.requests.get')
-    @patch('data_pipeline.ingestion.content_extractor.fitz.open')
+    @patch('DataPipeline.Ingestion.content_extractor.PDF_SUPPORT', True)
+    @patch('DataPipeline.Ingestion.content_extractor.time.sleep')
+    @patch('DataPipeline.Ingestion.content_extractor.requests.get')
+    @patch('DataPipeline.Ingestion.content_extractor.fitz.open')
     def test_regex_extraction_no_introduction_found(self, mock_fitz_open, mock_get, mock_sleep):
         """Test regex extraction when no introduction section is found."""
         # Arrange
@@ -485,9 +485,9 @@ class TestRegexPdfExtraction:
         # Assert
         assert result is None
 
-    @patch('data_pipeline.ingestion.content_extractor.PDF_SUPPORT', True)
-    @patch('data_pipeline.ingestion.content_extractor.time.sleep')
-    @patch('data_pipeline.ingestion.content_extractor.requests.get')
+    @patch('DataPipeline.Ingestion.content_extractor.PDF_SUPPORT', True)
+    @patch('DataPipeline.Ingestion.content_extractor.time.sleep')
+    @patch('DataPipeline.Ingestion.content_extractor.requests.get')
     def test_regex_extraction_pdf_download_fails(self, mock_get, mock_sleep):
         """Test regex extraction when PDF download fails."""
         # Arrange
@@ -503,10 +503,10 @@ class TestRegexPdfExtraction:
         # Assert
         assert result is None
 
-    @patch('data_pipeline.ingestion.content_extractor.PDF_SUPPORT', True)
-    @patch('data_pipeline.ingestion.content_extractor.time.sleep')
-    @patch('data_pipeline.ingestion.content_extractor.requests.get')
-    @patch('data_pipeline.ingestion.content_extractor.fitz.open')
+    @patch('DataPipeline.Ingestion.content_extractor.PDF_SUPPORT', True)
+    @patch('DataPipeline.Ingestion.content_extractor.time.sleep')
+    @patch('DataPipeline.Ingestion.content_extractor.requests.get')
+    @patch('DataPipeline.Ingestion.content_extractor.fitz.open')
     def test_regex_extraction_intro_too_long(self, mock_fitz_open, mock_get, mock_sleep):
         """Test that introductions longer than 15000 chars are rejected."""
         # Arrange
@@ -652,8 +652,8 @@ class TestFallbackExtraction:
 class TestExtractContentIntegration:
     """Test the main extract_content method that orchestrates all strategies."""
 
-    @patch('data_pipeline.ingestion.content_extractor.time.sleep')
-    @patch('data_pipeline.ingestion.content_extractor.requests.get')
+    @patch('DataPipeline.Ingestion.content_extractor.time.sleep')
+    @patch('DataPipeline.Ingestion.content_extractor.requests.get')
     def test_extract_content_strategy_1_arxiv_success(self, mock_get, mock_sleep):
         """Test that Strategy 1 (ArXiv HTML) is tried first and succeeds."""
         # Arrange

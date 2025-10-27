@@ -2,12 +2,12 @@
 
 Production-ready embedding service for processing research papers from GCS.
 
-## 🏗️ Architecture
+##  Architecture
 ```
 GCS Parquet Files → Text Cleaning → Chunking → Embedding → Weaviate
 ```
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### 1. Install Dependencies
 ```bash
@@ -42,7 +42,7 @@ python services/embedding_service.py healthcare
 python services/embedding_service.py healthcare --max-papers 100 --batch-size 25
 ```
 
-## 📁 Project Structure
+##  Project Structure
 ```
 CITECONNECT/
 ├── preprocessing/          # Text cleaning and chunking
@@ -55,7 +55,7 @@ CITECONNECT/
 └── .env                  # Configuration (not in git)
 ```
 
-## 🧪 Testing
+##  Testing
 ```bash
 # Run all tests
 ./run_tests.sh
@@ -64,13 +64,13 @@ CITECONNECT/
 pytest tests/test_preprocessing.py -v
 ```
 
-## 📊 Data Flow
+##  Data Flow
 
 1. **Input**: Parquet files in `gs://citeconnect-processed-parquet/{domain}/`
 2. **Process**: Clean → Chunk → Embed
 3. **Output**: Searchable vectors in Weaviate
 
-## 🔧 Configuration
+##  Configuration
 
 Edit `.env` to configure:
 - GCS bucket and credentials
@@ -79,13 +79,13 @@ Edit `.env` to configure:
 - Chunk size and overlap
 - Batch processing size
 
-## 📖 Module Documentation
+##  Module Documentation
 
 - [Preprocessing Module](preprocessing/README.md)
 - [Embeddings Module](embeddings/README.md)
 - [Services Module](services/README.md)
 
-## 🐛 Troubleshooting
+##  Troubleshooting
 
 **Weaviate not starting:**
 ```bash
