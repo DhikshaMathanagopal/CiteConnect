@@ -87,7 +87,8 @@ gcs-credentials.json
 
 # Redis
 *.rdb
-
+git_data/
+dvc_data/
 # # ChromaDB specific (commented out)
 # chroma/
 # .chroma/
