@@ -72,3 +72,28 @@ pytest-json-report==1.5.0
 
 # PostgreSQL (for future metadata store)
 # psycopg2-binary>=2.9.0
+
+# ------------------------------
+# CiteConnect Data Bias Analysis
+# ------------------------------
+
+# Core data handling
+pandas>=2.0.0
+numpy>=1.24.0
+
+# GCS integration
+google-cloud-storage>=2.10.0
+
+# Visualization
+matplotlib>=3.8.0
+seaborn>=0.12.2
+
+# Fairness & Slicing
+fairlearn>=0.13.0
+scikit-learn>=1.3.0
+
+# Email testing (optional for local runs)
+python-dotenv>=1.0.1
+
+# For JSON and file handling
+pyarrow>=15.0.0

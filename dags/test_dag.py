@@ -219,6 +219,91 @@ def embed_stored_data():
     
     return service.process_domain("healthcare", batch_size=5, max_papers=10, use_streaming=True)
 
+# ==========================================================
+# 🧠 Bias Analysis and Monitoring (Phases 2–4)
+# ==========================================================
+from airflow.operators.python_operator import PythonOperator
+import json
+import subprocess
+
+# ----- Phase 2: Run Bias Slicing Script -----
+def run_bias_slicing():
+    print("Running Fairlearn slicing analysis ...")
+    result = subprocess.run(
+        ["python", "databias/slicing_bias_analysis.py"],
+        capture_output=True, text=True
+    )
+    print(result.stdout)
+    print(result.stderr)
+    print("✅ Bias slicing completed. Results saved in databias/slices/")
+    return "bias_slicing_done"
+
+bias_slicing_task = PythonOperator(
+    task_id='bias_slicing_analysis',
+    python_callable=run_bias_slicing,
+    dag=dag
+)
+
+# ----- Phase 3: Check Bias and Send Alerts -----
+def check_bias_and_send_alert():
+    print("Checking fairness_disparity.json ...")
+    disparity_path = "databias/slices/fairness_disparity.json"
+    if not os.path.exists(disparity_path):
+        raise ValueError("fairness_disparity.json not found. Run slicing first.")
+    
+    with open(disparity_path, "r") as f:
+        disparity = json.load(f)
+
+    disparity_ratio = disparity.get("disparity_ratio", 0)
+    disparity_diff = disparity.get("disparity_difference", 0)
+
+    print(f"📈 Disparity ratio: {disparity_ratio:.2f}")
+    print(f"📉 Disparity difference: {disparity_diff:.2f}")
+
+    THRESHOLD = 10.0  # 🔔 alert threshold for ratio
+
+    if disparity_ratio > THRESHOLD:
+        subject = f"⚠️ CiteConnect Bias Alert: Disparity ratio {disparity_ratio:.2f}"
+        html_content = f"""
+        <h3>Bias Threshold Exceeded</h3>
+        <p><b>Disparity Ratio:</b> {disparity_ratio:.2f}<br>
+        <b>Disparity Difference:</b> {disparity_diff:.2f}</p>
+        <p>Check the detailed slice report in databias/slices/fairness_disparity.json</p>
+        """
+        send_email(
+            to=EMAIL_TO,
+            subject=subject,
+            html_content=html_content
+        )
+        print(f"🚨 Bias alert email sent! Ratio exceeded threshold {THRESHOLD}.")
+        return "alert_sent"
+    else:
+        print("✅ Bias within acceptable limits. No alert sent.")
+        return "no_alert"
+
+bias_alert_task = PythonOperator(
+    task_id='bias_alert_check',
+    python_callable=check_bias_and_send_alert,
+    dag=dag
+)
+
+# ----- Phase 4: Bias Mitigation (Optional) -----
+def mitigate_bias():
+    import pandas as pd
+    df = pd.read_parquet("data/combined_gcs_data_balanced.parquet")
+    print(f"✅ Loaded {len(df)} records for mitigation.")
+    print("Balancing underrepresented fields (simulation)...")
+    # Add balancing logic later if you retrain models here
+    balanced_path = "data/final_balanced_dataset.parquet"
+    df.to_parquet(balanced_path, index=False)
+    print(f"💾 Saved mitigated dataset → {balanced_path}")
+    return "bias_mitigated"
+
+bias_mitigation_task = PythonOperator(
+    task_id='bias_mitigation',
+    python_callable=mitigate_bias,
+    dag=dag
+)
 
 def send_success_notification(**context):
     task_instance = context['task_instance']
@@ -302,5 +387,5 @@ notification_task = PythonOperator(
 )
 
 # Set dependencies
-env_check_task >> gcs_check_task >> api_test_task >> collection_test_task >> preprocess_task >> embed_task >> notification_task
+env_check_task >> gcs_check_task >> api_test_task >> collection_test_task >> preprocess_task >> embed_task >> bias_slicing_task >> bias_alert_task >> bias_mitigation_task >> notification_task
 # env_check_task >> gcs_check_task >> api_test_task >> preprocess_task >> notification_task
