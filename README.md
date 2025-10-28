@@ -375,3 +375,187 @@ isOpenAccess, openAccessPdf, tldr
 - Without key: 100 requests per 5 minutes
 - With key: 1 request per second
 ---
+### Notes
+1. Open-access PDFs are stored and parsed; restricted PDFs are linked via metadata only.
+2. This project is for academic purposes and aligns with the MLOps IE7305 course objectives.
+
+# CiteConnect Project Structure
+
+```
+citeconnect/
+├── README.md
+├── requirements.txt
+├── requirements-test.txt           # NEW: Testing dependencies
+├── pytest.ini                      # NEW: Test configuration
+├── setup.py                        # NEW: Package setup for testing
+├── TESTING_PIPELINE.md            # NEW: Testing documentation
+├── docker-compose.yaml
+├── .env.example
+├── .gitignore
+├── pyproject.toml
+├── dags/
+│   ├── __init__.py
+│   ├── simple_data_ingestion_dag.py
+│   ├── complete_mlops_pipeline_dag.py
+│   └── dag_utils/
+│       ├── __init__.py
+│       ├── notification_helpers.py
+│       └── task_groups.py
+├── src/
+│   ├── __init__.py
+│   ├── data_pipeline/
+│   │   ├── __init__.py
+│   │   ├── ingestion/
+│   │   │   ├── __init__.py
+│   │   │   ├── semantic_scholar_client.py
+│   │   │   ├── content_extractor.py
+│   │   │   ├── metadata_utils.py
+│   │   │   ├── processor.py
+│   │   │   ├── gcs_uploader.py
+│   │   │   ├── batch_ingestion.py
+│   │   │   ├── arxiv_client.py
+│   │   │   ├── paper_selector.py
+│   │   │   └── batch_downloader.py
+│   │   ├── processing/
+│   │   │   ├── __init__.py
+│   │   │   ├── pdf_processor.py
+│   │   │   ├── text_extractor.py
+│   │   │   ├── chunking_engine.py
+│   │   │   └── preprocessing_utils.py
+│   │   ├── validation/
+│   │   │   ├── __init__.py
+│   │   │   ├── quality_checker.py
+│   │   │   ├── validation_rules.py
+│   │   │   ├── data_profiler.py
+│   │   │   └── batch_validator.py
+│   │   └── utils/
+│   │       ├── __init__.py
+│   │       ├── constants.py
+│   │       ├── storage_helpers.py
+│   │       ├── logging_config.py
+│   │       └── error_handlers.py
+│   ├── model_pipeline/
+│   │   ├── __init__.py
+│   │   ├── embeddings/
+│   │   │   ├── __init__.py
+│   │   │   ├── embedding_generator.py
+│   │   │   ├── vector_store.py
+│   │   │   └── similarity_search.py
+│   │   ├── training/
+│   │   │   ├── __init__.py
+│   │   │   ├── model_trainer.py
+│   │   │   ├── recommendation_engine.py
+│   │   │   └── evaluation_metrics.py
+│   │   └── serving/
+│   │       ├── __init__.py
+│   │       ├── model_server.py
+│   │       └── api_endpoints.py
+│   ├── deployment/
+│   │   ├── __init__.py
+│   │   ├── infrastructure/
+│   │   │   ├── gcp_setup.py
+│   │   │   ├── k8s_deployer.py
+│   │   │   └── terraform_configs.py
+│   │   ├── containers/
+│   │   │   ├── Dockerfile.data_pipeline
+│   │   │   ├── Dockerfile.model_server
+│   │   │   └── Dockerfile.api
+│   │   └── monitoring/
+│   │       ├── prometheus_config.py
+│   │       ├── grafana_dashboards.py
+│   │       └── alerting_rules.py
+│   └── web_app/
+│       ├── __init__.py
+│       ├── app.py
+│       ├── static/
+│       ├── templates/
+│       └── components/
+├── tests/                          # UPDATED: Complete test structure
+│   ├── __init__.py
+│   ├── conftest.py                # Shared fixtures and test configuration
+│   │
+│   ├── unit/                      # Unit tests (147 tests)
+│   │   ├── __init__.py
+│   │   ├── test_semantic_scholar_client.py    # 35 tests
+│   │   ├── test_content_extractor.py          # 32 tests
+│   │   ├── test_metadata_utils.py             # 44 tests
+│   │   ├── test_processor.py                  # 18 tests
+│   │   ├── test_gcs_uploader.py              # 23 tests
+│   │   └── test_setup.py                      # Setup validation tests
+│   │
+│   ├── integration/               # Integration tests (12 tests)
+│   │   ├── __init__.py
+│   │   └── test_end_to_end_pipeline.py       # Complete pipeline tests
+│   │
+│   ├── data_quality/              # Data quality tests (future)
+│   │   ├── __init__.py
+│   │   ├── test_schema_validation.py
+│   │   ├── test_data_completeness.py
+│   │   └── test_anomaly_detection.py
+│   │
+│   └── fixtures/                  # Test data and mocks
+│       ├── __init__.py
+│       ├── sample_papers.json
+│       └── mock_responses.py
+│
+├── configs/
+│   ├── __init__.py
+│   ├── config.yaml
+│   ├── selection_criteria.yaml
+│   ├── model_config.yaml
+│   ├── logging.yaml
+│   └── deployment_config.yaml
+├── scripts/
+│   ├── setup_environment.sh
+│   ├── install_dependencies.sh
+│   ├── generate_fernet_key.py
+│   ├── data_backup.py
+│   └── health_check.py
+├── docs/
+│   ├── README.md
+│   ├── SETUP.md
+│   ├── API_DOCUMENTATION.md
+│   ├── ARCHITECTURE.md
+│   ├── diagrams/
+│   └── presentations/
+├── infrastructure/
+│   ├── terraform/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   └── outputs.tf
+│   ├── kubernetes/
+│   │   ├── deployment.yaml
+│   │   ├── service.yaml
+│   │   └── ingress.yaml
+│   └── monitoring/
+│       ├── prometheus.yaml
+│       ├── grafana-dashboard.json
+│       └── alerts.yaml
+├── notebooks/
+│   ├── 01_data_exploration.ipynb
+│   ├── 02_pdf_processing_analysis.ipynb
+│   ├── 03_embedding_experiments.ipynb
+│   └── 04_model_evaluation.ipynb
+├── data/
+│   ├── raw/
+│   ├── processed/
+│   ├── embeddings/
+│   └── models/
+├── logs/
+│   └── .gitkeep
+├── working_data/
+│   ├── temp_pdfs/
+│   ├── processing_cache/
+│   └── .gitkeep
+├── config/
+│   ├── .gitkeep
+│   ├── gcp-credentials.json
+│   └── api_keys.env
+└── plugins/
+    ├── __init__.py
+    ├── operators/
+    │   ├── citeconnect_operators.py
+    │   └── gcs_operators.py
+    └── hooks/
+        └── semantic_scholar_hook.py
+```

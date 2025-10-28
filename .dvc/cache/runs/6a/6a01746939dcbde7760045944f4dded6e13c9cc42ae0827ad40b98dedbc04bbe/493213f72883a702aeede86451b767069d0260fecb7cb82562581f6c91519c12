@@ -1,0 +1,19 @@
+cmd: python src/DataPipeline/Ingestion/semantic_scholar_client.py
+deps:
+- path: src/DataPipeline/Ingestion/semantic_scholar_client.py
+  hash: md5
+  md5: 5fb94db4e7226b1cf137984394ad96ba
+  size: 7269
+params:
+  params.yaml:
+    data_collection.limit: 10
+    data_collection.query: machine learning
+outs:
+- path: data/raw/papers.json
+  hash: md5
+  md5: 89a9d3f391ced2ef896e9396b566f8c9
+  size: 20526
+- path: metrics/stats.json
+  hash: md5
+  md5: d870a930c8eb436d0f346a8eea87130e
+  size: 259
