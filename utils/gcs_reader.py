@@ -66,12 +66,13 @@ class GCSReader:
         List all parquet files in bucket with optional prefix.
 
         Args:
-            prefix: Folder prefix (e.g., 'healthcare/', 'raw/')
+            prefix: Folder prefix (e.g., 'raw/healthcare/')
 
         Returns:
             List of blob paths
         """
         try:
+            logger.info(f"Current prefix is {prefix}...")    
             blobs = self.bucket.list_blobs(prefix=prefix)
             parquet_files = [
                 blob.name for blob in blobs 
@@ -147,7 +148,7 @@ class GCSReader:
             prefix = custom_prefix
         # Default: domain-based structure
         else:
-            prefix = f"{domain}/" if not domain.endswith('/') else domain
+            prefix = f"raw/{domain}/"
             
         parquet_files = self.list_parquet_files(prefix)
 
@@ -198,7 +199,7 @@ class GCSReader:
         if custom_prefix:
             prefix = custom_prefix
         else:
-            prefix = f"{domain}/" if not domain.endswith('/') else domain
+            prefix = f"raw/"
             
         parquet_files = self.list_parquet_files(prefix)
 
