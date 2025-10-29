@@ -27,7 +27,7 @@ x-airflow-common:
     SMTP_USER: ${SMTP_USER}
     SMTP_PASSWORD: ${SMTP_PASSWORD}
 
-    GOOGLE_APPLICATION_CREDENTIALS: /opt/airflow/gcs-key.json
+    GOOGLE_APPLICATION_CREDENTIALS: /opt/airflow/configs/credentials/gcs-key.json
     GCS_BUCKET_NAME: ${GCS_BUCKET_NAME}
     GCS_PROJECT_ID: ${GCS_PROJECT_ID}
 

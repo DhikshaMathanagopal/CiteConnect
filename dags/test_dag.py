@@ -409,10 +409,8 @@ bias_mitigation_task = PythonOperator(
     python_callable=mitigate_bias,
     dag=dag
 )
+
 def version_embeddings_with_dvc(**context):
-    """
-    Version embeddings with DVC and append to a run_summary.json log.
-    """
     import subprocess
     import os
     import json
@@ -420,18 +418,85 @@ def version_embeddings_with_dvc(**context):
     
     project_root = "/opt/airflow"
     embeddings_path = os.path.join(project_root, "working_data/embeddings_db.pkl")
-    
     summary_path = os.path.join(project_root, "working_data/run_summary.json")
 
-    if not os.path.exists(embeddings_path):
-        print("No embeddings file found to version")
-        return {"status": "no_file"}
-    
     try:
+        git_dir = os.path.join(project_root, ".git")
+        if not os.path.exists(git_dir):
+            print("This appears to be a first-time run. Initializing Git repository...")
+            subprocess.run(['git', 'init', '-b', 'main'], check=True, capture_output=True, cwd=project_root)
+            print("Git repository initialized.")
+        else:
+            print("Git repository already initialized.")
+
+        dvc_dir = os.path.join(project_root, ".dvc")
+        if not os.path.exists(dvc_dir):
+            print("This appears to be a first-time run. Initializing DVC and remote...")
+            
+            subprocess.run(['dvc', 'init', '--no-scm'], check=True, capture_output=True, cwd=project_root)
+            print("DVC initialized.")
+            
+            subprocess.run(
+                ['dvc', 'remote', 'add', '-d', 'gcs', 'gs://citeconnect-test-bucket/dvc-cache'],
+                check=True, capture_output=True, cwd=project_root
+            )
+            print("DVC remote 'gcs' added.")
+            
+            subprocess.run(
+                ['dvc', 'remote', 'modify', 'gcs', 'credentialpath', '/opt/airflow/configs/credentials/gcs-key.json'],
+                check=True, capture_output=True, cwd=project_root
+            )
+            print("DVC remote 'gcs' credentials configured.")
+
+            subprocess.run(
+                ['git', 'config', '--global', '--add', 'safe.directory', project_root], 
+                check=True, capture_output=True, cwd=project_root
+            )
+            subprocess.run(['git', 'config', '--global', 'user.email', 'aditya811.abhinav@gmail.com'], check=True, cwd=project_root)
+            subprocess.run(['git', 'config', '--global', 'user.name', 'Abhinav Aditya'], check=True, cwd=project_root)
+            
+            subprocess.run(['git', 'add', '.dvc/config'], check=True, capture_output=True, cwd=project_root)
+            
+            subprocess.run(
+                ['git', 'commit', '-m', 'Initialize DVC and remote'],
+                check=True, capture_output=True, cwd=project_root
+            )
+            print("Initial DVC configuration committed to Git.")
+            
+        else:
+            print("DVC already initialized.")
+        
+        try:
+            result = subprocess.run(['dvc', 'remote', 'list'], capture_output=True, text=True, cwd=project_root)
+            if 'gcs' not in result.stdout:
+                print("DVC remote not found, re-adding...")
+                subprocess.run(
+                    ['dvc', 'remote', 'add', '-d', 'gcs', 'gs://citeconnect-test-bucket/dvc-cache'],
+                    check=True, capture_output=True, cwd=project_root
+                )
+                subprocess.run(
+                    ['dvc', 'remote', 'modify', 'gcs', 'credentialpath', '/opt/airflow/configs/credentials/gcs-key.json'],
+                    check=True, capture_output=True, cwd=project_root
+                )
+                print("DVC remote re-configured.")
+        except subprocess.CalledProcessError:
+            print("Warning: Could not verify DVC remote")
+        
+        
+        subprocess.run(
+            ['git', 'config', '--global', '--add', 'safe.directory', project_root], 
+            check=True, 
+            capture_output=True,
+            cwd=project_root
+        )
+
         ti = context['task_instance']
         embed_results = ti.xcom_pull(task_ids='embed_stored_data') or {}
         
-        file_size_mb = round(os.path.getsize(embeddings_path) / (1024*1024), 2)
+        file_size_mb = 0.0
+        if os.path.exists(embeddings_path):
+            file_size_mb = round(os.path.getsize(embeddings_path) / (1024*1024), 2)
+
         embeddings_created = embed_results.get('embedded_chunks', 0)
         total_papers = embed_results.get('total_papers', 0)
         run_params = embed_results.get('params', {"status": "unknown"})
@@ -444,7 +509,6 @@ def version_embeddings_with_dvc(**context):
                 if not isinstance(summary_list, list):
                     summary_list = [summary_list]
             except json.JSONDecodeError:
-                print(f"Warning: Could not read {summary_path}, starting new list.")
                 summary_list = []
 
         new_run_summary = {
@@ -467,34 +531,20 @@ def version_embeddings_with_dvc(**context):
             json.dump(summary_list, f, indent=4)
         print(f"Appended new run to {summary_path}. Total runs logged: {len(summary_list)}")
 
-        # Check if DVC is initialized
-        dvc_dir = os.path.join(project_root, ".dvc")
-        if not os.path.exists(dvc_dir):
-            print("⚠️  DVC not initialized. Skipping DVC versioning.")
-            new_run_summary["status"] = "skipped_dvc_not_initialized"
-            new_run_summary["note"] = "DVC repository not initialized"
-            return new_run_summary
+        # Git config
+        subprocess.run(['git', 'config', '--global', 'user.email', 'aditya811.abhinav@gmail.com'], check=True, cwd=project_root)
+        subprocess.run(['git', 'config', '--global', 'user.name', 'Abhinav Aditya'], check=True, cwd=project_root)
         
-        print("Configuring Git user...")
-        subprocess.run(
-            ['git', 'config', '--global', '--add', 'safe.directory', project_root], 
-            check=True, 
-            capture_output=True,
-            cwd=project_root
-        )
-        subprocess.run(['git', 'config', '--global', 'user.email', '"aditya811.abhinav@gmail.com"'], check=True, cwd=project_root)
-        subprocess.run(['git', 'config', '--global', 'user.name', '"Abhinav Aditya"'], check=True, cwd=project_root)
-        print("Git user configured.")
-        
-        subprocess.run(['dvc', 'add', embeddings_path], check=True, capture_output=True, cwd=project_root)
-        print("Added embeddings to DVC tracking")
+        # DVC add
+        if os.path.exists(embeddings_path):
+            subprocess.run(['dvc', 'add', embeddings_path], check=True, capture_output=True, cwd=project_root)
+            print("Added embeddings to DVC tracking")
+            embed_dvc_file = f"{embeddings_path}.dvc"
+            subprocess.run(['git', 'add', embed_dvc_file], check=True, capture_output=True, cwd=project_root)
+            print("Added .dvc file to git")
 
-        embed_dvc_file = f"{embeddings_path}.dvc"
-        
-        subprocess.run(['git', 'add', embed_dvc_file], check=True, capture_output=True, cwd=project_root)
-        print("Added .dvc file to git")
-        
-        subprocess.run(['git', 'add', summary_path], check=True, capture_output=True, cwd=project_root)
+        # Git add summary
+        subprocess.run(['git', 'add', '-f', summary_path], check=True, capture_output=True, cwd=project_root)
         print("Added run_summary.json to git")
 
         try:
@@ -502,6 +552,7 @@ def version_embeddings_with_dvc(**context):
         except subprocess.CalledProcessError:
             pass
         
+        # Git commit
         commit_msg = f"Update embeddings: {embeddings_created} chunks, {total_papers} papers - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
         
         subprocess.run(
@@ -512,21 +563,23 @@ def version_embeddings_with_dvc(**context):
         )
         print(f"Git commit: {commit_msg}")
         
-        subprocess.run(['dvc', 'push'], check=True, capture_output=True, cwd=project_root)
-        print("Pushed to DVC remote")
+        # DVC Push
+        if os.path.exists(embeddings_path):
+            subprocess.run(['dvc', 'push'], check=True, capture_output=True, cwd=project_root)
+            print("Pushed to DVC remote")
         
         new_run_summary["status"] = "success"
         new_run_summary["commit_message"] = commit_msg
         return new_run_summary
         
     except subprocess.CalledProcessError as e:
-        error_msg = f"DVC/Git command failed: {e.stderr.decode() if e.stderr else e.stdout.decode()}"
+        error_msg = f"DVC/Git command failed: {e.stderr.decode() if e.stderr else e.stdout.decode() if e.stdout else str(e)}"
         print(f"Error: {error_msg}")
-        raise ValueError(error_msg)
+        return {"status": "failed", "error": error_msg}  # FIXED: Return instead of raise
     except Exception as e:
         error_msg = f"Unexpected error: {e}"
         print(f"Error: {error_msg}")
-        raise ValueError(error_msg)
+        return {"status": "failed", "error": error_msg}  # FIXED: Return instead of raise
 
 def generate_schema_and_stats(**context):
     """Generate schema and validate data quality"""
@@ -632,7 +685,7 @@ def send_success_notification(**context):
             <li>✅ preprocess_papers</li>
             <li>✅ embed_stored_data</li>
             <li>✅ version_embeddings_dvc (Data Versioning)</li>
-            <li>>✅ schema validation: SUCCESS</li>
+            <li>✅ schema validation: SUCCESS</li>
         </ul>
 
         <h3>Pipeline Details</h3>
