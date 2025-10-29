@@ -9,7 +9,7 @@ import re
 import json
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
-from utils.storage_helpers import upload_to_gcs  # ✅ Upload helper
+from utils.storage_helpers import upload_to_gcs  # Upload helper
 
 # ================================================================
 # GROBID + PDF Libraries
@@ -19,14 +19,14 @@ try:
     GROBID_AVAILABLE = True
 except ImportError:
     GROBID_AVAILABLE = False
-    logging.warning("⚠️ GROBID not installed. Install: pip install grobid-client-python")
+    logging.warning(" GROBID not installed. Install: pip install grobid-client-python")
 
 try:
     import fitz  # PyMuPDF
     PDF_SUPPORT = True
 except ImportError:
     PDF_SUPPORT = False
-    logging.warning("⚠️ PyMuPDF not installed. Install: pip install pymupdf")
+    logging.warning("PyMuPDF not installed. Install: pip install pymupdf")
 
 # ================================================================
 # LOGGING CONFIG
@@ -89,9 +89,9 @@ class ContentExtractor:
             try:
                 if requests.get("http://localhost:8070/api/isalive", timeout=2).status_code == 200:
                     self.grobid_client = GrobidClient(config_path=None)
-                    logging.info("✅ GROBID server detected and ready")
+                    logging.info(" GROBID server detected and ready")
             except Exception:
-                logging.warning("⚠️ GROBID not reachable — fallback mode only.")
+                logging.warning(" GROBID not reachable — fallback mode only.")
 
     def scrape_arxiv_html(self, arxiv_id: str) -> Optional[str]:
         """Strategy 1: Extract intro from ArXiv HTML page."""
@@ -108,7 +108,7 @@ class ContentExtractor:
                     intro = "\n".join(p.get_text(strip=True) for p in section.find_all("p"))
                     break
             if len(intro) > 200:
-                logging.info(f"✅ ArXiv HTML extraction successful ({len(intro)} chars)")
+                logging.info(f" ArXiv HTML extraction successful ({len(intro)} chars)")
                 return intro
         except Exception as e:
             logging.debug(f"ArXiv HTML failed: {e}")
@@ -132,7 +132,7 @@ class ContentExtractor:
             if intro_div:
                 text = "\n".join(p.get_text(strip=True) for p in intro_div.find_all("p"))
                 if len(text) > 200:
-                    logging.info(f"✅ GROBID extraction successful ({len(text)} chars)")
+                    logging.info(f" GROBID extraction successful ({len(text)} chars)")
                     return text
         except Exception as e:
             logging.debug(f"GROBID failed: {e}")
@@ -155,7 +155,7 @@ class ContentExtractor:
             if match:
                 intro = match.group(0).strip()
                 if len(intro) > 200:
-                    logging.info(f"✅ Regex extraction successful ({len(intro)} chars)")
+                    logging.info(f" Regex extraction successful ({len(intro)} chars)")
                     return intro
         except Exception as e:
             logging.debug(f"Regex failed: {e}")
@@ -242,7 +242,7 @@ def process_papers(papers: List[Dict], search_term: str) -> List[Dict]:
     extractor = ContentExtractor()
     results = []
     for i, paper in enumerate(papers, 1):
-        logging.info(f"📄 Processing {i}/{len(papers)}: {paper.get('title', 'Unknown')[:80]}")
+        logging.info(f" Processing {i}/{len(papers)}: {paper.get('title', 'Unknown')[:80]}")
         record = extract_metadata(paper, search_term)
         content, method, quality = extractor.extract_content(paper)
         if content:
@@ -263,16 +263,16 @@ def save_to_parquet(data: List[Dict], search_term: str, output_dir: str = "data"
     filename = f"{output_dir}/{safe_term}_{int(time.time())}.parquet"
     df = pd.DataFrame(data)
     df.to_parquet(filename, index=False)
-    logging.info(f"✅ Saved {len(data)} records to {filename}")
+    logging.info(f" Saved {len(data)} records to {filename}")
 
     try:
         bucket = "citeconnect-processed-parquet"
         domain = Path(output_dir).name
         dest = f"{domain}/{os.path.basename(filename)}"
         if upload_to_gcs(filename, bucket, dest):
-            logging.info(f"📤 Uploaded → gs://{bucket}/{dest}")
+            logging.info(f" Uploaded → gs://{bucket}/{dest}")
     except Exception as e:
-        logging.error(f"❌ GCS upload failed: {e}")
+        logging.error(f" GCS upload failed: {e}")
     return filename
 
 # ================================================================
@@ -287,7 +287,7 @@ def ingest_papers(search_terms: List[str], limit: int = 10, output_dir: str = "d
             continue
         processed = process_papers(papers, term)
         save_to_parquet(processed, term, output_dir)
-        logging.info(f"✅ Completed ingestion for: {term}\n")
+        logging.info(f" Completed ingestion for: {term}\n")
 
 # ================================================================
 # ENTRY POINT
