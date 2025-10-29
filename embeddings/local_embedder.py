@@ -29,6 +29,7 @@ class LocalEmbedder:
         model_name = model_name or config.local_model
         save_path = save_path or config.local_db_path
         
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
         logger.info(f"Loading sentence-transformers model: {model_name}...")
         self.model = SentenceTransformer(model_name)
         self.save_path = save_path
@@ -148,6 +149,7 @@ class LocalEmbedder:
             filepath: Path to save file (default: self.save_path)
         """
         filepath = filepath or self.save_path
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
         
         try:
             with open(filepath, 'wb') as f:
