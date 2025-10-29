@@ -11,7 +11,7 @@ import os
 sys.path.insert(0, '/opt/airflow')
 
 # Email settings
-EMAIL_TO = ['aditya811.abhinav@gmail.com']  # Replace with your email
+EMAIL_TO = ['anushasrini2001@gmail.com']  # Replace with your email
 
 # Default arguments with email configuration
 default_args = {
@@ -21,8 +21,8 @@ default_args = {
     'email': EMAIL_TO,
     'email_on_failure': True,
     'email_on_retry': False,
-    'retries': 2,
-    'retry_delay': timedelta(minutes=5),
+    'retries': 1,
+    'retry_delay': timedelta(minutes=1),
 }
 
 # DAG config
@@ -34,6 +34,8 @@ dag = DAG(
     catchup=False,
     tags=['test', 'citeconnect']
 )
+
+search_terms = ["large language models"]
 
 def check_env_variables():
     semantic_scholar_key = os.getenv('SEMANTIC_SCHOLAR_API_KEY')
@@ -165,11 +167,19 @@ def run_unit_tests():
 
 def test_paper_collection():
     from src.DataPipeline.Ingestion.main import collect_papers_only
+    import os
     
-    search_terms = ["quantum computing", "ai in healthcare"] 
+    # Get search terms from environment variable or use default
+    search_terms_env = os.getenv('SEARCH_TERMS', 'machine learning,computer vision')
+    search_terms = [term.strip() for term in search_terms_env.split(',')]
+    limit = int(os.getenv('PAPERS_PER_TERM', '5'))
+    
+    print(f"🔍 Search terms: {search_terms}")
+    print(f"📊 Papers per term: {limit}")
+    
     results = collect_papers_only(
         search_terms=search_terms,
-        limit=5,
+        limit=limit,
         output_dir="/tmp/test_data/raw"
     )
     
@@ -222,9 +232,6 @@ def embed_stored_data():
 # ==========================================================
 # 🧠 Bias Analysis and Monitoring (Phases 2–4)
 # ==========================================================
-from airflow.operators.python_operator import PythonOperator
-import json
-import subprocess
 
 # ----- Phase 2a: Load Data from GCS -----
 def load_bias_data_from_gcs():
@@ -401,44 +408,254 @@ bias_mitigation_task = PythonOperator(
     python_callable=mitigate_bias,
     dag=dag
 )
+def version_embeddings_with_dvc(**context):
+    """
+    Version embeddings with DVC and append to a run_summary.json log.
+    """
+    import subprocess
+    import os
+    import json
+    from datetime import datetime
+    
+    project_root = "/opt/airflow"
+    embeddings_path = os.path.join(project_root, "working_data/embeddings_db.pkl")
+    
+    summary_path = os.path.join(project_root, "working_data/run_summary.json")
+
+    if not os.path.exists(embeddings_path):
+        print("No embeddings file found to version")
+        return {"status": "no_file"}
+    
+    try:
+        ti = context['task_instance']
+        embed_results = ti.xcom_pull(task_ids='embed_stored_data') or {}
+        
+        file_size_mb = round(os.path.getsize(embeddings_path) / (1024*1024), 2)
+        embeddings_created = embed_results.get('embedded_chunks', 0)
+        total_papers = embed_results.get('total_papers', 0)
+        run_params = embed_results.get('params', {"status": "unknown"})
+        
+        summary_list = []
+        if os.path.exists(summary_path):
+            try:
+                with open(summary_path, 'r') as f:
+                    summary_list = json.load(f)
+                if not isinstance(summary_list, list):
+                    summary_list = [summary_list]
+            except json.JSONDecodeError:
+                print(f"Warning: Could not read {summary_path}, starting new list.")
+                summary_list = []
+
+        new_run_summary = {
+            "run_timestamp": datetime.now().isoformat(),
+            "params": run_params,
+            "outs": {
+                "embeddings_file": {
+                    "path": "working_data/embeddings_db.pkl",
+                    "file_size_mb": file_size_mb,
+                    "total_chunks": embeddings_created
+                },
+                "total_papers_processed": total_papers,
+                "search_terms": search_terms
+            }
+        }
+        
+        summary_list.append(new_run_summary)
+        
+        with open(summary_path, 'w') as f:
+            json.dump(summary_list, f, indent=4)
+        print(f"Appended new run to {summary_path}. Total runs logged: {len(summary_list)}")
+
+        print("Configuring Git user...")
+        subprocess.run(
+            ['git', 'config', '--global', '--add', 'safe.directory', project_root], 
+            check=True, 
+            capture_output=True,
+            cwd=project_root
+        )
+        subprocess.run(['git', 'config', '--global', 'user.email', '"aditya811.abhinav@gmail.com"'], check=True, cwd=project_root)
+        subprocess.run(['git', 'config', '--global', 'user.name', '"Abhinav Aditya"'], check=True, cwd=project_root)
+        print("Git user configured.")
+        
+        subprocess.run(['dvc', 'add', embeddings_path], check=True, capture_output=True, cwd=project_root)
+        print("Added embeddings to DVC tracking")
+
+        embed_dvc_file = f"{embeddings_path}.dvc"
+        
+        subprocess.run(['git', 'add', embed_dvc_file], check=True, capture_output=True, cwd=project_root)
+        print("Added .dvc file to git")
+        
+        subprocess.run(['git', 'add', summary_path], check=True, capture_output=True, cwd=project_root)
+        print("Added run_summary.json to git")
+
+        try:
+            subprocess.run(['git', 'add', '.gitignore'], check=True, capture_output=True, cwd=project_root)
+        except subprocess.CalledProcessError:
+            pass
+        
+        commit_msg = f"Update embeddings: {embeddings_created} chunks, {total_papers} papers - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        
+        subprocess.run(
+            ['git', 'commit', '--allow-empty', '-m', commit_msg], 
+            check=True, 
+            capture_output=True, 
+            cwd=project_root
+        )
+        print(f"Git commit: {commit_msg}")
+        
+        subprocess.run(['dvc', 'push'], check=True, capture_output=True, cwd=project_root)
+        print("Pushed to DVC remote")
+        
+        new_run_summary["status"] = "success"
+        new_run_summary["commit_message"] = commit_msg
+        return new_run_summary
+        
+    except subprocess.CalledProcessError as e:
+        error_msg = f"DVC/Git command failed: {e.stderr.decode() if e.stderr else e.stdout.decode()}"
+        print(f"Error: {error_msg}")
+        raise ValueError(error_msg)
+    except Exception as e:
+        error_msg = f"Unexpected error: {e}"
+        print(f"Error: {error_msg}")
+        raise ValueError(error_msg)
+
+def generate_schema_and_stats(**context):
+    """Generate schema and validate data quality"""
+    from src.DataPipeline.Validation.schema_validator import validate_schema
+    return validate_schema(**context)
 
 def send_success_notification(**context):
-    task_instance = context['task_instance']
     dag_run = context['dag_run']
+    ti = context['task_instance']
+    
+    try:
+        version_results = ti.xcom_pull(task_ids='version_embeddings_dvc')
+        if not version_results:
+            # Fallback in case XCom pull fails
+            version_results = {"status": "success", "outs": {"embeddings_file": {}}}
+        
+        # Extract key metrics
+        params = version_results.get('params', {})
+        outs = version_results.get('outs', {"embeddings_file": {}})
+        embed_file_stats = outs.get('embeddings_file', {})
+        
+        papers_processed = outs.get('total_papers_processed', 'N/A')
+        chunks_created = embed_file_stats.get('total_chunks', 'N/A')
+        file_size = embed_file_stats.get('file_size_mb', 'N/A')
+        commit_msg = version_results.get('commit_message', 'N/A')
+
+    except Exception as e:
+        print(f"Warning: Could not pull XCom data. Sending generic email. Error: {e}")
+        papers_processed = 'N/A'
+        chunks_created = 'N/A'
+        file_size = 'N/A'
+        commit_msg = 'N/A'
+        params = {}
+
+    
+    # Get schema validation results
+    schema_results = task_instance.xcom_pull(task_ids='generate_schema_and_stats')
+    
+    # Build alert message if quality dropped
+    alert_msg = ""
+    if schema_results and schema_results.get('alert'):
+        alert_msg = f"<p style='color: red;'><strong>⚠️ ALERT: {schema_results['alert']}</strong></p>"
     
     subject = f"CiteConnect Pipeline SUCCESS - {dag_run.execution_date}"
     
+    quality_score = schema_results.get('quality_score', 'N/A') if schema_results else 'N/A'
+    
     html_content = f"""
-    <h2>CiteConnect Pipeline Completed Successfully!</h2>
-    
-    <h3>Pipeline Details:</h3>
-    <ul>
-        <li><strong>DAG:</strong> {dag_run.dag_id}</li>
-        <li><strong>Execution Date:</strong> {dag_run.execution_date}</li>
-        <li><strong>Start Date:</strong> {dag_run.start_date}</li>
-        <li><strong>Duration:</strong> {dag_run.end_date - dag_run.start_date if dag_run.end_date else 'Running'}</li>
-    </ul>
-    
-    <h3>All Tests Passed:</h3>
-    <ul>
-        <li>Environment check: SUCCESS</li>
-        <li>Import test: SUCCESS</li>
-        <li>API connection: SUCCESS</li>
-        <li>Data storage: SUCCESS</li>
-    </ul>
-    
-    <p><strong>Your CiteConnect pipeline is working perfectly!</strong></p>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: Arial, sans-serif; line-height: 1.6; }}
+            h2 {{ color: #2E8B57; }}
+            h3 {{ border-bottom: 1px solid #ddd; padding-bottom: 5px; }}
+            ul {{ list-style-type: none; padding-left: 0; }}
+            li strong {{ color: #333; }}
+            .summary-box {{ 
+                background-color: #f4f4f4; 
+                border: 1px solid #ddd; 
+                padding: 15px; 
+                border-radius: 5px; 
+            }}
+            .commit {{
+                font-family: 'Courier New', Courier, monospace;
+                background-color: #eee;
+                padding: 5px;
+                border-radius: 3px;
+                font-style: italic;
+            }}
+        </style>
+    </head>
+    <body>
+        <h2>✅ CiteConnect Pipeline Completed Successfully!</h2>
+        
+        <p><strong>Your CiteConnect pipeline run has finished and all data has been versioned.</strong></p>
+
+        <h3>Run Summary</h3>
+        <div class="summary-box">
+            <ul>
+                <li><strong>Papers Processed:</strong> {papers_processed}</li>
+                <li><strong>Embeddings Created:</strong> {chunks_created}</li>
+                <li><strong>Final Data Size:</strong> {file_size} MB</li>
+                <li><strong>Parameters:</strong>
+                    <ul>
+                        <li>Domain: {params.get('domain', 'N/A')}</li>
+                        <li>Max Papers: {params.get('max_papers', 'N/A')}</li>
+                        <li>Batch Size: {params.get('batch_size', 'N/A')}</li>
+                        <li><strong>Overall Quality Score:</strong> {quality_score}%</li>
+                        <li><strong>Total Papers:</strong> {schema_results.get('total_papers', 'N/A') if schema_results else 'N/A'}</li>
+                    </ul>
+                </li>
+                <li><strong>Commit:</strong> <span class="commit">"{commit_msg}"</span></li>
+            </ul>
+        </div>
+
+        <h3>Pipeline Stages Completed</h3>
+        <ul>
+            <li>✅ check_env_variables</li>
+            <li>✅ check_gcs_connection</li>
+            <li>✅ test_api_connection (Unit Tests)</li>
+            <li>✅ test_paper_collection</li>
+            <li>✅ preprocess_papers</li>
+            <li>✅ embed_stored_data</li>
+            <li>✅ version_embeddings_dvc (Data Versioning)</li>
+            <li>>✅ schema validation: SUCCESS</li>
+        </ul>
+
+        <h3>Pipeline Details</h3>
+        <ul>
+            <li><strong>DAG:</strong> {dag_run.dag_id}</li>
+            <li><strong>Execution Date:</strong> {dag_run.execution_date}</li>
+            <li><strong>Start Date:</strong> {dag_run.start_date}</li>
+            <li><strong>Duration:</strong> {dag_run.end_date - dag_run.start_date if dag_run.end_date else 'Running'}</li>
+        </ul>
+    </body>
+    </html>
     """
     
-    send_email(
-        to=EMAIL_TO,
-        subject=subject,
-        html_content=html_content
-    )
+    # Try to send email, but don't fail if credentials are missing
+    try:
+        smtp_user = os.getenv('SMTP_USER')
+        smtp_pass = os.getenv('SMTP_PASSWORD')
+        
+        if smtp_user and smtp_pass:
+            send_email(
+                to=EMAIL_TO,
+                subject=subject,
+                html_content=html_content
+            )
+            print(f"✅ Success email sent to {EMAIL_TO}")
+        else:
+            print("⚠️ SMTP credentials not set. Skipping email notification.")
+            print("   To enable emails, set SMTP_USER and SMTP_PASSWORD environment variables.")
+    except Exception as e:
+        print(f"⚠️ Email sending failed: {e}")
+        print("   Pipeline completed successfully, but email notification was skipped.")
     
-    print(f"Success email sent to {EMAIL_TO}")
-    return "email_sent"
-
+    return "pipeline_completed"
 
 env_check_task = PythonOperator(
     task_id='check_env_variables',
@@ -461,6 +678,7 @@ api_test_task = PythonOperator(
 collection_test_task = PythonOperator(
     task_id='test_paper_collection',
     python_callable=test_paper_collection,
+    trigger_rule='all_success',
     dag=dag
 )
 
@@ -477,6 +695,19 @@ embed_task = PythonOperator(
     dag=dag
 )
 
+schema_stats_task = PythonOperator(
+    task_id='generate_schema_and_stats',
+    python_callable=generate_schema_and_stats,
+      dag=dag
+)
+
+dvc_version_task = PythonOperator(
+    task_id='version_embeddings_dvc',
+    python_callable=version_embeddings_with_dvc,
+    provide_context=True,
+    dag=dag
+)
+
 notification_task = PythonOperator(
     task_id='send_success_notification',
     python_callable=send_success_notification,
@@ -484,5 +715,5 @@ notification_task = PythonOperator(
 )
 
 # Set dependencies
-env_check_task >> gcs_check_task >> api_test_task >> collection_test_task >> preprocess_task >> load_bias_data_task >> bias_slicing_task >> bias_alert_task >> bias_mitigation_task >> embed_task >> notification_task
-# env_check_task >> gcs_check_task >> api_test_task >> preprocess_task >> notification_task
+env_check_task >> gcs_check_task >> api_test_task >> collection_test_task >> preprocess_task >> load_bias_data_task >> bias_slicing_task >> bias_alert_task >> bias_mitigation_task >> embed_task >> dvc_version_task >> schema_stats_task >> notification_task
+

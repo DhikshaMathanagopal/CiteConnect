@@ -35,7 +35,7 @@ class EmbeddingConfig:
     # Sentence-transformers model name
     local_model: str = os.getenv('SENTENCE_TRANSFORMERS_MODEL', 'all-MiniLM-L6-v2')
     # Path to save/load local embeddings database
-    local_db_path: str = os.getenv('LOCAL_EMBEDDINGS_PATH', 'embeddings_db.pkl')
+    local_db_path: str = os.getenv('LOCAL_EMBEDDINGS_PATH', '/opt/airflow/working_data/embeddings_db.pkl')
     
     # ============================================
     # WEAVIATE SETTINGS

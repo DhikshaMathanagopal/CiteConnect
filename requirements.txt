@@ -64,6 +64,8 @@ mypy==1.7.1
 pytest-html==4.1.1
 pytest-json-report==1.5.0
 
+dvc[gs]==3.32.0
+
 # Orchestration (optional for now)
 # apache-airflow>=2.7.0
 

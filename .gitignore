@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 __pycache__/
 venv/
 .env
@@ -10,7 +9,6 @@ data/
 *.parquet
 *.csv
 .ipynb_checkpoints/
-=======
 # Python
 __pycache__/
 *.py[cod]
@@ -100,7 +98,8 @@ gcs-credentials.json
 
 # Redis
 *.rdb
-
+git_data/
+dvc_data/
 # # ChromaDB specific (commented out)
 # chroma/
 # .chroma/>>>>>>> origin/main
@@ -108,3 +107,4 @@ gcs-credentials.json
 databias/slices/*.png
 databias/plots/*.png
 data/*.parquet
+# .chroma/
