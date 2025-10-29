@@ -23,6 +23,15 @@
 
 ---
 
+## Documentation
+
+Comprehensive documentation is available in the [`documentation/`](https://github.com/DhikshaMathanagopal/CiteConnect/tree/main/documentation) directory:
+
+- **[Error Audit & Quality Assurance Plan](https://github.com/DhikshaMathanagopal/CiteConnect/blob/main/documentation/Error%20Audit%20%26%20Quality%20Assurance%20Plan.md)** - Detailed error scenarios, resolution strategies, and QA monitoring framework
+- **[User Research Analysis Report](https://github.com/DhikshaMathanagopal/CiteConnect/blob/main/documentation/User%20Research%20Analysis%20Report.md)** - User research findings and UX insights
+- **[Pipeline Testing Documentation](https://github.com/DhikshaMathanagopal/CiteConnect/blob/main/documentation/test_pipelineDoc.md)** - Detailed pipeline architecture and testing documentation
+
+---
 ##  Overview
 
 **CiteConnect** is a production-ready data ingestion and processing pipeline designed to collect academic research papers from multiple sources with comprehensive metadata extraction. Built as part of Northeastern University's IE7305 MLOps course, the system demonstrates end-to-end pipeline orchestration with Apache Airflow, automated testing, and data versioning.
