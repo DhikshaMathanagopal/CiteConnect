@@ -371,6 +371,10 @@ citations, references, fieldsOfStudy, s2FieldsOfStudy,
 isOpenAccess, openAccessPdf, tldr
 ```
 
+**Rate Limits**:
+- Without key: 100 requests per 5 minutes
+- With key: 1 request per second
+---
 ### Notes
 1. Open-access PDFs are stored and parsed; restricted PDFs are linked via metadata only.
 2. This project is for academic purposes and aligns with the MLOps IE7305 course objectives.

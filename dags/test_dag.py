@@ -11,7 +11,7 @@ import os
 sys.path.insert(0, '/opt/airflow')
 
 # Email settings
-EMAIL_TO = ['aditya811.abhinav@gmail.com']  # Replace with your email
+EMAIL_TO = ['anushasrini2001@gmail.com']  # Replace with your email
 
 # Default arguments with email configuration
 default_args = {
@@ -167,10 +167,19 @@ def run_unit_tests():
 
 def test_paper_collection():
     from src.DataPipeline.Ingestion.main import collect_papers_only
+    import os
+    
+    # Get search terms from environment variable or use default
+    search_terms_env = os.getenv('SEARCH_TERMS', 'machine learning,computer vision')
+    search_terms = [term.strip() for term in search_terms_env.split(',')]
+    limit = int(os.getenv('PAPERS_PER_TERM', '5'))
+    
+    print(f"🔍 Search terms: {search_terms}")
+    print(f"📊 Papers per term: {limit}")
     
     results = collect_papers_only(
         search_terms=search_terms,
-        limit=5,
+        limit=limit,
         output_dir="/tmp/test_data/raw"
     )
     
@@ -331,6 +340,11 @@ def version_embeddings_with_dvc(**context):
         print(f"Error: {error_msg}")
         raise ValueError(error_msg)
 
+def generate_schema_and_stats(**context):
+    """Generate schema and validate data quality"""
+    from src.DataPipeline.Validation.schema_validator import validate_schema
+    return validate_schema(**context)
+
 def send_success_notification(**context):
     dag_run = context['dag_run']
     ti = context['task_instance']
@@ -360,7 +374,17 @@ def send_success_notification(**context):
         params = {}
 
     
+    # Get schema validation results
+    schema_results = task_instance.xcom_pull(task_ids='generate_schema_and_stats')
+    
+    # Build alert message if quality dropped
+    alert_msg = ""
+    if schema_results and schema_results.get('alert'):
+        alert_msg = f"<p style='color: red;'><strong>⚠️ ALERT: {schema_results['alert']}</strong></p>"
+    
     subject = f"CiteConnect Pipeline SUCCESS - {dag_run.execution_date}"
+    
+    quality_score = schema_results.get('quality_score', 'N/A') if schema_results else 'N/A'
     
     html_content = f"""
     <html>
@@ -402,6 +426,8 @@ def send_success_notification(**context):
                         <li>Domain: {params.get('domain', 'N/A')}</li>
                         <li>Max Papers: {params.get('max_papers', 'N/A')}</li>
                         <li>Batch Size: {params.get('batch_size', 'N/A')}</li>
+                        <li><strong>Overall Quality Score:</strong> {quality_score}%</li>
+                        <li><strong>Total Papers:</strong> {schema_results.get('total_papers', 'N/A') if schema_results else 'N/A'}</li>
                     </ul>
                 </li>
                 <li><strong>Commit:</strong> <span class="commit">"{commit_msg}"</span></li>
@@ -417,6 +443,7 @@ def send_success_notification(**context):
             <li>✅ preprocess_papers</li>
             <li>✅ embed_stored_data</li>
             <li>✅ version_embeddings_dvc (Data Versioning)</li>
+            <li>>✅ schema validation: SUCCESS</li>
         </ul>
 
         <h3>Pipeline Details</h3>
@@ -430,14 +457,26 @@ def send_success_notification(**context):
     </html>
     """
     
-    send_email(
-        to=EMAIL_TO,
-        subject=subject,
-        html_content=html_content
-    )
+    # Try to send email, but don't fail if credentials are missing
+    try:
+        smtp_user = os.getenv('SMTP_USER')
+        smtp_pass = os.getenv('SMTP_PASSWORD')
+        
+        if smtp_user and smtp_pass:
+            send_email(
+                to=EMAIL_TO,
+                subject=subject,
+                html_content=html_content
+            )
+            print(f"✅ Success email sent to {EMAIL_TO}")
+        else:
+            print("⚠️ SMTP credentials not set. Skipping email notification.")
+            print("   To enable emails, set SMTP_USER and SMTP_PASSWORD environment variables.")
+    except Exception as e:
+        print(f"⚠️ Email sending failed: {e}")
+        print("   Pipeline completed successfully, but email notification was skipped.")
     
-    print(f"Success email sent to {EMAIL_TO}")
-    return "email_sent"
+    return "pipeline_completed"
 
 env_check_task = PythonOperator(
     task_id='check_env_variables',
@@ -477,6 +516,12 @@ embed_task = PythonOperator(
     dag=dag
 )
 
+schema_stats_task = PythonOperator(
+    task_id='generate_schema_and_stats',
+    python_callable=generate_schema_and_stats,
+      dag=dag
+)
+
 dvc_version_task = PythonOperator(
     task_id='version_embeddings_dvc',
     python_callable=version_embeddings_with_dvc,
@@ -491,4 +536,5 @@ notification_task = PythonOperator(
 )
 
 # Set dependencies
-env_check_task >> gcs_check_task >> api_test_task >> collection_test_task >> preprocess_task >> embed_task >> dvc_version_task >> notification_task
+env_check_task >> gcs_check_task >> api_test_task >> collection_test_task >> preprocess_task >> embed_task >> dvc_version_task >> schema_stats_task >> notification_task
+# env_check_task >> gcs_check_task >> api_test_task >> preprocess_task >> notification_task
