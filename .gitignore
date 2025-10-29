@@ -1,3 +1,14 @@
+__pycache__/
+venv/
+.env
+data/raw/*
+data/processed/*
+*.pyc
+logs/
+data/
+*.parquet
+*.csv
+.ipynb_checkpoints/
 # Python
 __pycache__/
 *.py[cod]
@@ -91,4 +102,9 @@ git_data/
 dvc_data/
 # # ChromaDB specific (commented out)
 # chroma/
+# .chroma/>>>>>>> origin/main
+
+databias/slices/*.png
+databias/plots/*.png
+data/*.parquet
 # .chroma/

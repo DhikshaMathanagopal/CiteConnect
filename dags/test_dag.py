@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import sys
 import json
 import os
+import subprocess
 
 # Add project to path
 sys.path.insert(0, '/opt/airflow')
@@ -229,6 +230,185 @@ def embed_stored_data():
     
     return service.process_domain("healthcare", batch_size=5, max_papers=10, use_streaming=True)
 
+# ==========================================================
+# 🧠 Bias Analysis and Monitoring (Phases 2–4)
+# ==========================================================
+
+# ----- Phase 2a: Load Data from GCS -----
+def load_bias_data_from_gcs():
+    """Load all parquet files from GCS and combine them for bias analysis."""
+    import pandas as pd
+    import json
+    import numpy as np
+    from utils.gcs_reader import GCSReader
+    
+    print("Loading data from GCS for bias analysis ...")
+    
+    # Set working directory to project root
+    project_root = '/opt/airflow'
+    data_path = os.path.join(project_root, "data/combined_gcs_data.parquet")
+    
+    # Check if data already exists
+    if os.path.exists(data_path):
+        print(f"✅ Data file already exists at {data_path}. Skipping download.")
+        return "data_loaded"
+    
+    try:
+        # Initialize GCS reader
+        reader = GCSReader(
+            bucket_name="citeconnect-test-bucket",
+            project_id="strange-calling-476017-r5"
+        )
+        
+        # Load all parquet files from raw/ folder
+        print("📥 Loading all parquet files from citeconnect-test-bucket/raw/")
+        df_all = reader.read_all_from_domain(
+            domain="",
+            custom_prefix="raw/",
+            flat_structure=True
+        )
+        
+        if df_all.empty:
+            raise ValueError("No data loaded from GCS!")
+        
+        print(f"✅ Loaded {len(df_all)} total records from GCS")
+        
+        # Clean up any dict/list/ndarray columns before saving
+        def safe_serialize(val):
+            """Convert dicts, lists, or arrays into JSON-safe strings"""
+            if isinstance(val, (dict, list, np.ndarray)):
+                try:
+                    return json.dumps(val, default=str)
+                except Exception:
+                    return str(val)
+            return val
+
+        for col in df_all.columns:
+            if df_all[col].dtype == 'object':
+                df_all[col] = df_all[col].apply(safe_serialize)
+        
+        # Save to local file
+        os.makedirs(os.path.join(project_root, "data"), exist_ok=True)
+        df_all.to_parquet(data_path, index=False)
+        
+        print(f"💾 Saved merged data to {data_path}")
+        print(f"📊 Columns: {df_all.columns.tolist()}")
+        print(f"📊 Shape: {df_all.shape}")
+        
+        return "data_loaded"
+        
+    except Exception as e:
+        print(f"❌ Error loading data from GCS: {e}")
+        raise
+
+# ----- Phase 2b: Run Bias Slicing Script -----
+def run_bias_slicing():
+    print("Running Fairlearn slicing analysis ...")
+    
+    # Set working directory to project root
+    project_root = '/opt/airflow'
+    
+    # Check if data file exists
+    data_path = os.path.join(project_root, "data/combined_gcs_data.parquet")
+    if not os.path.exists(data_path):
+        raise FileNotFoundError(f"Data file not found: {data_path}. Run GCS data loading first.")
+    
+    result = subprocess.run(
+        ["python", "databias/slicing_bias_analysis.py"],
+        capture_output=True, 
+        text=True,
+        cwd=project_root,
+        timeout=600
+    )
+    print(result.stdout)
+    if result.stderr:
+        print(result.stderr)
+    
+    # Check if the script ran successfully
+    if result.returncode != 0:
+        raise RuntimeError(f"Bias slicing script failed with exit code: {result.returncode}")
+    
+    print("✅ Bias slicing completed. Results saved in databias/slices/")
+    return "bias_slicing_done"
+
+load_bias_data_task = PythonOperator(
+    task_id='load_bias_data_from_gcs',
+    python_callable=load_bias_data_from_gcs,
+    dag=dag,
+    trigger_rule='all_done'  # Run even if upstream tasks are skipped
+)
+
+bias_slicing_task = PythonOperator(
+    task_id='bias_slicing_analysis',
+    python_callable=run_bias_slicing,
+    dag=dag,
+    trigger_rule='all_success'  # Only run if upstream succeeded
+)
+
+# ----- Phase 3: Check Bias and Send Alerts -----
+def check_bias_and_send_alert():
+    print("Checking fairness_disparity.json ...")
+    
+    # Use absolute path to project root
+    project_root = '/opt/airflow'
+    disparity_path = os.path.join(project_root, "databias/slices/fairness_disparity.json")
+    
+    if not os.path.exists(disparity_path):
+        raise ValueError(f"fairness_disparity.json not found at {disparity_path}. Run slicing first.")
+    
+    with open(disparity_path, "r") as f:
+        disparity = json.load(f)
+
+    disparity_ratio = disparity.get("disparity_ratio", 0)
+    disparity_diff = disparity.get("disparity_difference", 0)
+
+    print(f"📈 Disparity ratio: {disparity_ratio:.2f}")
+    print(f"📉 Disparity difference: {disparity_diff:.2f}")
+
+    THRESHOLD = 10.0  # 🔔 alert threshold for ratio
+
+    if disparity_ratio > THRESHOLD:
+        subject = f"⚠️ CiteConnect Bias Alert: Disparity ratio {disparity_ratio:.2f}"
+        html_content = f"""
+        <h3>Bias Threshold Exceeded</h3>
+        <p><b>Disparity Ratio:</b> {disparity_ratio:.2f}<br>
+        <b>Disparity Difference:</b> {disparity_diff:.2f}</p>
+        <p>Check the detailed slice report in databias/slices/fairness_disparity.json</p>
+        """
+        send_email(
+            to=EMAIL_TO,
+            subject=subject,
+            html_content=html_content
+        )
+        print(f"🚨 Bias alert email sent! Ratio exceeded threshold {THRESHOLD}.")
+        return "alert_sent"
+    else:
+        print("✅ Bias within acceptable limits. No alert sent.")
+        return "no_alert"
+
+bias_alert_task = PythonOperator(
+    task_id='bias_alert_check',
+    python_callable=check_bias_and_send_alert,
+    dag=dag
+)
+
+# ----- Phase 4: Bias Mitigation (Optional) -----
+def mitigate_bias():
+    import pandas as pd
+    df = pd.read_parquet("data/combined_gcs_data_balanced.parquet")
+    print(f"✅ Loaded {len(df)} records for mitigation.")
+    print("Balancing underrepresented fields (simulation)...")
+    # Add balancing logic later if you retrain models here
+    balanced_path = "data/final_balanced_dataset.parquet"
+    df.to_parquet(balanced_path, index=False)
+    print(f"💾 Saved mitigated dataset → {balanced_path}")
+    return "bias_mitigated"
+
+bias_mitigation_task = PythonOperator(
+    task_id='bias_mitigation',
+    python_callable=mitigate_bias,
+    dag=dag
+)
 def version_embeddings_with_dvc(**context):
     """
     Version embeddings with DVC and append to a run_summary.json log.
@@ -287,6 +467,14 @@ def version_embeddings_with_dvc(**context):
             json.dump(summary_list, f, indent=4)
         print(f"Appended new run to {summary_path}. Total runs logged: {len(summary_list)}")
 
+        # Check if DVC is initialized
+        dvc_dir = os.path.join(project_root, ".dvc")
+        if not os.path.exists(dvc_dir):
+            print("⚠️  DVC not initialized. Skipping DVC versioning.")
+            new_run_summary["status"] = "skipped_dvc_not_initialized"
+            new_run_summary["note"] = "DVC repository not initialized"
+            return new_run_summary
+        
         print("Configuring Git user...")
         subprocess.run(
             ['git', 'config', '--global', '--add', 'safe.directory', project_root], 
@@ -536,5 +724,5 @@ notification_task = PythonOperator(
 )
 
 # Set dependencies
-env_check_task >> gcs_check_task >> api_test_task >> collection_test_task >> preprocess_task >> embed_task >> dvc_version_task >> schema_stats_task >> notification_task
-# env_check_task >> gcs_check_task >> api_test_task >> preprocess_task >> notification_task
+env_check_task >> gcs_check_task >> api_test_task >> collection_test_task >> preprocess_task >> load_bias_data_task >> bias_slicing_task >> bias_alert_task >> bias_mitigation_task >> embed_task >> dvc_version_task >> schema_stats_task >> notification_task
+
