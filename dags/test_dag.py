@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import sys
 import json
 import os
+import subprocess
 
 # Add project to path
 sys.path.insert(0, '/opt/airflow')
@@ -466,6 +467,14 @@ def version_embeddings_with_dvc(**context):
             json.dump(summary_list, f, indent=4)
         print(f"Appended new run to {summary_path}. Total runs logged: {len(summary_list)}")
 
+        # Check if DVC is initialized
+        dvc_dir = os.path.join(project_root, ".dvc")
+        if not os.path.exists(dvc_dir):
+            print("⚠️  DVC not initialized. Skipping DVC versioning.")
+            new_run_summary["status"] = "skipped_dvc_not_initialized"
+            new_run_summary["note"] = "DVC repository not initialized"
+            return new_run_summary
+        
         print("Configuring Git user...")
         subprocess.run(
             ['git', 'config', '--global', '--add', 'safe.directory', project_root], 

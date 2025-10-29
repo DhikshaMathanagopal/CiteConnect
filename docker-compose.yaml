@@ -47,9 +47,9 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/databias:/opt/airflow/databias
     - ${AIRFLOW_PROJ_DIR:-.}/gcs-key.json:/opt/airflow/gcs-key.json:ro
     - ${AIRFLOW_PROJ_DIR:-.}/configs:/opt/airflow/configs
-    - ${AIRFLOW_PROJ_DIR:-.}/working_data:/opt/airflow/working_data
-    - ${AIRFLOW_PROJ_DIR:-.}/git_data:/opt/airflow/.git
-    - ${AIRFLOW_PROJ_DIR:-.}/dvc_data:/opt/airflow/.dvc 
+    - ${AIRFLOW_PROJ_DIR:-.}/.git:/opt/airflow/.git
+    - ${AIRFLOW_PROJ_DIR:-.}/.dvc:/opt/airflow/.dvc
+    - ${AIRFLOW_PROJ_DIR:-.}/working_data:/opt/airflow/working_data 
 
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
