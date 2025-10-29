@@ -11,7 +11,7 @@ import os
 sys.path.insert(0, '/opt/airflow')
 
 # Email settings
-EMAIL_TO = ['anushasrini2001@gmail.com']  # Replace with your email
+EMAIL_TO = ['aditya811.abhinav@gmail.com']  # Replace with your email
 
 # Default arguments with email configuration
 default_args = {
@@ -375,6 +375,7 @@ def send_success_notification(**context):
 
     
     # Get schema validation results
+    task_instance = context['task_instance']
     schema_results = task_instance.xcom_pull(task_ids='generate_schema_and_stats')
     
     # Build alert message if quality dropped
