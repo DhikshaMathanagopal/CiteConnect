@@ -1,557 +1,997 @@
-# CiteConnect: Research Paper Ingestion Pipeline
+# CiteConnect: AI-Powered Research Paper Recommendation System
 
-## Overview
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Apache Airflow](https://img.shields.io/badge/Airflow-2.7.1-orange.svg)](https://airflow.apache.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code Coverage](https://img.shields.io/badge/coverage-85%25-brightgreen.svg)]()
 
-This pipeline ingests academic research papers from Semantic Scholar, extracts comprehensive metadata and full-text content (abstracts and introductions), and stores the data in a structured format for downstream processing in the CiteConnect recommendation system.
-
-## Features
-
-### Multi-Strategy Content Extraction
-The pipeline uses a **4-tier fallback approach** to maximize intro extraction success:
-
-1. **ArXiv HTML** (Strategy 1) - Cleanest source, best quality
-2. **GROBID PDF Parsing** (Strategy 2) - ML-based structured extraction
-3. **Regex PDF Extraction** (Strategy 3) - Pattern-based fallback
-4. **Abstract + TLDR** (Strategy 4) - Always available fallback
-
-This ensures **100% content coverage** while maximizing the number of full introductions extracted.
-
-### Comprehensive Metadata Collection
-
-The pipeline collects **30 metadata fields** per paper:
-
-#### Identifiers
-- `paperId` - Semantic Scholar unique ID
-- `externalIds` - DOI, ArXiv ID, PubMed ID, etc.
-
-#### Core Content
-- `title` - Paper title
-- `abstract` - Paper abstract
-- `introduction` - Extracted introduction section (when available)
-
-#### Temporal Information
-- `year` - Publication year
-- `publicationDate` - Full publication date (YYYY-MM-DD)
-
-#### Authorship
-- `authors` - Comma-separated author names
-- `authorIds` - List of Semantic Scholar author IDs
-
-#### Venue & Publication Type
-- `venue` - Journal or conference name
-- `publicationTypes` - Type(s): Journal, Conference, Review, etc.
-- `publicationVenue` - Detailed venue information
-
-#### Citation Metrics
-- `citationCount` - Total citations
-- `influentialCitationCount` - High-impact citations
-- `referenceCount` - Number of papers cited
-
-#### Citation Network
-- `citations` - Paper IDs of papers citing this work (max 50)
-- `references` - Paper IDs of papers cited by this work (max 50)
-
-#### Topic Classification
-- `fieldsOfStudy` - Broad topics (e.g., "Computer Science", "Medicine")
-- `s2FieldsOfStudy` - Granular AI-tagged topics
-
-#### Access Information
-- `isOpenAccess` - Whether paper is open access
-- `pdf_url` - Direct PDF URL if available
-
-#### AI-Generated Summary
-- `tldr` - One-sentence summary from Semantic Scholar
-
-#### Extraction Metadata
-- `extraction_method` - How content was extracted (`arxiv_html`, `grobid_pdf`, `regex_pdf`, `abstract_tldr`)
-- `content_quality` - Quality rating (`high`, `medium`, `low`)
-- `has_intro` - Boolean: full introduction extracted?
-- `intro_length` - Introduction length in characters
-
-#### Pipeline Tracking
-- `status` - Pipeline status
-- `fail_reason` - Reason for failure (if any)
-- `scraped_at` - Timestamp of scraping
+> **An MLOps-driven data pipeline that collects, processes, and versions academic research papers with comprehensive metadata extraction and automated testing.**
 
 ---
 
-## Installation
+##  Table of Contents
 
-### Prerequisites
-- Python 3.8+
-- Docker (optional, for GROBID)
+- [Overview](#overview)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Prerequisites](#prerequisites)
+- [Installation & Setup](#installation--setup)
+- [Running the Pipeline](#running-the-pipeline)
+- [Project Structure](#project-structure)
+- [Troubleshooting](#troubleshooting)
+- [License](#license)
 
-### Required Dependencies
+---
+
+##  Overview
+
+**CiteConnect** is a production-ready data ingestion and processing pipeline designed to collect academic research papers from multiple sources with comprehensive metadata extraction. Built as part of Northeastern University's IE7305 MLOps course, the system demonstrates end-to-end pipeline orchestration with Apache Airflow, automated testing, and data versioning.
+
+### Key Objectives
+
+- **Comprehensive Data Collection**: Multi-source ingestion from Semantic Scholar, arXiv, and CORE APIs
+- **Robust Content Extraction**: 4-tier fallback strategy achieving 60-70% full introduction extraction
+- **Production-Ready Quality**: 85%+ test coverage with 164 unit tests and 12 integration tests
+- **Automated Orchestration**: Apache Airflow DAGs with email notifications and error handling
+- **Data Versioning**: DVC integration for reproducible data lineage
+
+---
+
+## ✨ Features
+
+###  Multi-Source Data Ingestion
+
+- **Semantic Scholar API Integration**: Primary source for academic papers
+- **arXiv HTML Extraction**: Highest quality full-text content
+- **PDF Processing**: GROBID and regex-based extraction
+- **Rate Limiting**: Intelligent backoff to avoid API blocks
+
+###  Comprehensive Metadata Collection
+
+**30+ metadata fields per paper**:
+- **Identifiers**: Paper ID, DOI, arXiv ID, PubMed ID
+- **Content**: Title, abstract, introduction (when available)
+- **Authors**: Names, IDs, affiliations
+- **Citations**: Citation count, influential citations, references
+- **Venue**: Journal/conference, publication type
+- **Topics**: Fields of study, AI-tagged categories
+- **Access**: Open access status, PDF URLs
+- **Quality Metrics**: Extraction method, content quality rating
+
+###  Data Processing Pipeline
+
+- **Schema Validation**: Automated data quality checks
+- **Text Preprocessing**: Cleaning, normalization
+- **Quality Scoring**: Content quality ratings (high/medium/low)
+- **Cloud Storage**: Google Cloud Storage integration
+
+###  Comprehensive Testing
+
+- **164 Unit Tests**: Individual component validation with mocking
+- **12 Integration Tests**: End-to-end pipeline testing
+- **85%+ Code Coverage**: Production-ready quality assurance
+- **Automated CI**: pytest integration in Airflow DAG
+
+###  Data Versioning
+
+- **DVC Integration**: Version control for datasets
+- **Run Tracking**: JSON logs with metadata for each pipeline run
+
+---
+
+##  Architecture
+
+### System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│               Apache Airflow Orchestration                  │
+│                                                             │
+│  Validate → Ingest → Process → Embed → Version              │
+└─────────────────────────────────────────────────────────────┘
+         ↓          ↓          ↓         ↓         ↓
+┌─────────────────────────────────────────────────────────────┐
+│                    Storage Layer                            │
+│                                                             │
+│  GCS (raw/processed) | Local (embeddings) | DVC (versions)  │
+└─────────────────────────────────────────────────────────────┘
+         ↑
+┌─────────────────────────────────────────────────────────────┐
+│              Data Sources                                   │
+│                                                             │
+│  Semantic Scholar | arXiv | CORE                            │
+└─────────────────────────────────────────────────────────────┘
+
+```
+### Pipeline Flow (5 Stages)
+
+```
+[1] VALIDATION
+    • Environment & API keys check
+    • GCS access validation
+    • 164 unit tests execution
+    
+              ↓
+
+[2] DATA INGESTION
+    • Semantic Scholar API query
+    • 4-tier content extraction:
+      1. ArXiv HTML (best quality)
+      2. GROBID PDF (ML-based)
+      3. Regex PDF (fallback)
+      4. Abstract+TLDR (guaranteed)
+    • 30+ metadata fields per paper
+    • Save to GCS as Parquet
+    
+              ↓
+
+[3] DATA PROCESSING
+    • Schema validation
+    • Text cleaning & normalization
+    • Quality filtering
+    • Feature engineering
+    • Upload to GCS
+    
+              ↓
+
+[4] EMBEDDING GENERATION
+    • Load papers from GCS
+    • Sentence-Transformers (384-dim)
+    • Batch processing
+    • Save embeddings_db.pkl
+    
+              ↓
+
+[5] DATA VERSIONING
+    • DVC tracking of embeddings
+    • Generate run_summary.json
+    • Git commit with metrics
+    • Push to DVC remote (GCS)
+    • Email notification
+
+```
+---
+
+##  Prerequisites
+
+### System Requirements
+
+- **OS**: macOS, Linux, or Windows with WSL2
+- **RAM**: 8GB minimum (16GB recommended)
+- **Disk**: 20GB free space
+- **Docker**: Version 20.10+ with Docker Compose v2+
+- **Git**: For version control
+
+### Software Dependencies
+
+- **Python**: 3.9 or 3.10 (required)
+- **Docker Desktop**: Latest version
+- **GCP Account**: For cloud storage (free tier available)
+
+### API Keys (Recommended)
+
+1. **Semantic Scholar API Key** (Optional but recommended)
+   - Request at: https://www.semanticscholar.org/product/api
+   - Without key: 1 request per 5 seconds
+   - With key: 1 request per 1 second
+
+2. **Google Cloud Platform** (Required)
+   - Create project at [console.cloud.google.com](https://console.cloud.google.com)
+   - Enable Cloud Storage API
+   - Create service account with Storage Admin role
+
+---
+
+##  Installation & Setup
+
+### Step 1: Clone the Repository
 
 ```bash
-pip install pymupdf pandas requests beautifulsoup4 pyarrow
+# Clone the repository
+git clone https://github.com/YOUR_USERNAME/CiteConnect.git
+cd CiteConnect
+
+# Verify you're on the main branch
+git branch
 ```
 
-### Optional Dependencies (for GROBID)
+### Step 2: Set Up Python Environment
 
 ```bash
-# Install GROBID client
-pip install grobid-client-python
+# Create virtual environment
+python3.9 -m venv .venv
 
-# Start GROBID server (Docker required)
-docker run -d -p 8070:8070 --name grobid-server lfoppiano/grobid:0.7.3
+# Activate virtual environment
+# On macOS/Linux:
+source .venv/bin/activate
 
-# Wait for startup
-sleep 60
+# On Windows:
+.venv\Scripts\activate
 
-# Verify GROBID is running
-curl http://localhost:8070/api/isalive
-# Should return: true
+# Upgrade pip
+pip install --upgrade pip
+
+# Install project dependencies
+pip install -r requirements.txt
+
+# Install development/testing dependencies
+pip install -r requirements-dev.txt
+
 ```
 
-### Optional: Semantic Scholar API Key
-
-For faster rate limits (1 req/sec vs 1 req/5sec):
-
-1. Request API key at: https://www.semanticscholar.org/product/api
-2. Set environment variable:
-```bash
-export SEMANTIC_SCHOLAR_KEY="your-api-key-here"
-```
-
----
-
-## Usage
-
-### Basic Usage
+### Step 3: Configure Environment Variables
 
 ```bash
-# Single search term
-python ingestion.py "machine learning" --limit 10
+# Copy example environment file
+cp .env.example .env
 
-# Multiple search terms
-python ingestion.py "AI in healthcare" "drug discovery" --limit 20
-
-# Custom output directory
-python ingestion.py "transformers" --limit 50 --output data/raw
-
-# Debug mode
-python ingestion.py "deep learning" --limit 5 --debug
+# Edit .env with your configuration
+nano .env  # or use your preferred editor
 ```
 
-### Command-Line Arguments
-
-```
-positional arguments:
-  search_terms          Search terms (space-separated)
-
-optional arguments:
-  --limit LIMIT         Papers per search term (default: 10)
-  --output OUTPUT       Output directory (default: data/papers)
-  --debug              Print debug information
-```
-
----
-
-## Pipeline Architecture
-
-### Data Flow
-
-```
-User Query
-    ↓
-Semantic Scholar API (with rate limiting)
-    ↓
-Paper Metadata Extraction (30 fields)
-    ↓
-Multi-Strategy Content Extraction
-    ├─→ Strategy 1: ArXiv HTML
-    ├─→ Strategy 2: GROBID PDF
-    ├─→ Strategy 3: Regex PDF
-    └─→ Strategy 4: Abstract + TLDR
-    ↓
-Data Quality Validation
-    ↓
-Save to Parquet File
-    ↓
-Log Statistics & Metrics
-```
-
-### Rate Limiting
-
-The pipeline implements intelligent rate limiting to avoid API blocks:
-
-- **Semantic Scholar**: 1.5s (with key) or 5s (without key) between requests
-- **ArXiv**: 2s between requests
-- **PDF Downloads**: 2s between downloads
-- **403 Retries**: 5s wait before retry with different user agent
-- **Exponential Backoff**: Doubles wait time on repeated failures
-
----
-
-## Output Format
-
-### File Structure
-
-```
-data/
-├── machine_learning_1729534520.parquet
-├── AI_in_healthcare_1729534600.parquet
-└── drug_discovery_1729534800.parquet
-```
-
-Each parquet file contains all papers from one search query with complete metadata.
-
-### Example Output Record
-
-```python
-{
-    'paperId': '204e3073870fae3d05bcbc2f6a8e263d9b72e776',
-    'title': 'Attention Is All You Need',
-    'abstract': 'The dominant sequence transduction models...',
-    'introduction': 'Recurrent neural networks, long short-term memory...',
-    'year': 2017,
-    'citationCount': 89234,
-    'influentialCitationCount': 12456,
-    'extraction_method': 'arxiv_html',
-    'content_quality': 'high',
-    'has_intro': True,
-    'intro_length': 3245,
-    # ... 20+ more fields
-}
-```
-
----
-
-## Performance Metrics
-
-### Expected Success Rates
-
-| Extraction Method | Success Rate | Quality |
-|-------------------|--------------|---------|
-| ArXiv HTML | 10-15% of papers | High |
-| GROBID PDF | 20-30% of papers | High |
-| Regex PDF | 15-25% of papers | Medium |
-| Abstract + TLDR | 100% of papers | Low |
-
-**Overall: 60-70% full intro extraction + 100% content coverage**
-
-### Processing Time
-
-| Papers | Without API Key | With API Key |
-|--------|----------------|--------------|
-| 10 papers | ~5-8 minutes | ~2-3 minutes |
-| 50 papers | ~25-35 minutes | ~10-15 minutes |
-| 100 papers | ~50-70 minutes | ~20-30 minutes |
-
----
-
-## Known Limitations & Bias
-
-### Data Bias
-
-1. **Open Access Bias**: Only includes freely available papers (~30-40% of all research)
-2. **Publisher Bias**: Some publishers block automated access (HTTP 403)
-3. **Extraction Bias**: Papers with non-standard formats may fail intro extraction
-4. **Temporal Bias**: Recent papers (2015+) have better availability
-5. **Field Bias**: ArXiv-heavy topics (CS, Physics, Math) have higher success rates
-
-### Technical Limitations
-
-1. **GROBID**: Requires Docker service, may fail on ~30% of PDFs
-2. **PDF Parsing**: Quality varies by publisher formatting
-3. **Rate Limits**: Without API key, processing is slower
-4. **No Paywall Access**: Cannot access subscription-only papers
-
-All limitations are tracked via metadata fields for transparency and downstream analysis.
-
----
-
-## Troubleshooting
-
-### GROBID Not Working
+**Required `.env` Configuration:**
 
 ```bash
-# Check if GROBID is running
-curl http://localhost:8070/api/isalive
+# ============================================
+# API KEYS
+# ============================================
+# Semantic Scholar API (optional but recommended)
+SEMANTIC_SCHOLAR_KEY=your_api_key_here
 
-# Restart GROBID
-docker restart grobid-server
+# Unpaywall API (requires email for rate limiting)
+UNPAYWALL_EMAIL=your_email@example.com
 
-# Or start fresh
-docker run -d -p 8070:8070 --name grobid-server lfoppiano/grobid:0.7.3
+# CORE API (optional)
+CORE_API_KEY=your_core_api_key
+
+# ============================================
+# GOOGLE CLOUD CONFIGURATION
+# ============================================
+GOOGLE_APPLICATION_CREDENTIALS=/opt/airflow/config/gcp-credentials.json
+GCS_BUCKET_NAME=citeconnect-test-bucket
+GCS_PROJECT_ID=your-gcp-project-id
+
+# ============================================
+# AIRFLOW CONFIGURATION
+# ============================================
+AIRFLOW_UID=50000
+_AIRFLOW_WWW_USER_NAME=admin
+_AIRFLOW_WWW_USER_PASSWORD=admin
+
+# Email notifications
+SMTP_USER=your_email@gmail.com
+SMTP_PASSWORD=your_app_password
+
+# ============================================
+# EMBEDDING CONFIGURATION
+# ============================================
+EMBEDDING_PROVIDER=weaviate
+SENTENCE_TRANSFORMERS_MODEL=all-MiniLM-L6-v2
+LOCAL_EMBEDDINGS_PATH=working_data/embeddings_db.pkl
+EMBEDDING_BATCH_SIZE=32
+CHUNK_SIZE=512
+CHUNK_OVERLAP=50
+
+# ============================================
+# WEAVIATE CONFIGURATION (if using)
+# ============================================
+WEAVIATE_URL=http://localhost:8080
+WEAVIATE_API_KEY=
+WEAVIATE_COLLECTION=PaperChunks
+
+# ============================================
+# OPENAI CONFIGURATION (fallback provider)
+# ============================================
+OPENAI_API_KEY=sk-your-api-key-here
+OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+EMBEDDING_DIM=768
 ```
 
-### Rate Limit Errors (429)
+### Step 4: Set Up Google Cloud Storage
 
 ```bash
-# Set API key
-export SEMANTIC_SCHOLAR_KEY="your-key"
+# Authenticate with GCP
+gcloud auth login
 
-# Or reduce batch size
-python ingestion.py "query" --limit 5
+# Set your project
+gcloud config set project YOUR_PROJECT_ID
+
+# Create GCS bucket
+gsutil mb -p YOUR_PROJECT_ID -l us-central1 gs://citeconnect-test-bucket
+
+# Create service account
+gcloud iam service-accounts create citeconnect-sa \
+    --display-name="CiteConnect Service Account"
+
+# Grant Storage Admin role to service account
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+    --member="serviceAccount:citeconnect-sa@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/storage.admin"
+
+# Download service account credentials
+gcloud iam service-accounts keys create ./config/gcp-credentials.json \
+    --iam-account=citeconnect-sa@YOUR_PROJECT_ID.iam.gserviceaccount.com
+
+# Grant your personal email access for testing
+gsutil iam ch user:YOUR_EMAIL:objectAdmin gs://citeconnect-test-bucket
+
+# Verify bucket access
+gsutil ls gs://citeconnect-test-bucket
 ```
 
-### Import Errors
+### Step 5: Start Docker Services
 
 ```bash
-# Install missing dependencies
-pip install pymupdf pandas requests beautifulsoup4 pyarrow
+# Remove version field from docker-compose.yaml if present
+# Open docker-compose.yaml and delete the line containing: version: '3.8'
+
+# Build and start all services
+docker compose up --build
+
+# Or run in detached mode (background)
+docker compose up -d --build
+
+# Wait for services to initialize (2-3 minutes)
+# Check logs to monitor startup
+docker compose logs -f airflow-init
+```
+
+**Services Started:**
+- **Airflow Webserver**: http://localhost:8080 (admin/admin)
+- **Airflow Scheduler**: Background service
+
+### Step 6: Verify Installation
+
+```bash
+# Check that all services are running
+docker compose ps
+
+# Run setup validation tests
+python -m pytest tests/unit/test_setup.py -v
+
+# Verify Airflow DAGs are loaded
+docker compose exec airflow-webserver airflow dags list
+
+# Check for the test_citeconnect DAG
+docker compose exec airflow-webserver airflow dags list | grep test_citeconnect
+
+# Verify GCS connection
+python scripts/health_check.py
+```
+
+**Expected Output:**
+```
+✅ All services running
+✅ Setup tests passed
+✅ DAG 'test_citeconnect' loaded successfully
+✅ GCS bucket accessible
 ```
 
 ---
 
-## Data Quality Assurance
+##  Running the Pipeline
 
-### Automated Validation
+### Option 1: Via Airflow UI (Recommended)
 
-The pipeline automatically validates:
-- All papers have `paperId`, `title`, and `abstract`
-- Years are between 1950-2025
-- Citation counts are non-negative
-- Introduction length is between 200-15,000 characters
+1. **Open Airflow Web Interface**
+   - Navigate to: http://localhost:8080
+   - Login: `admin` / `admin`
 
-### Monitoring Metrics
+2. **Locate the DAG**
+   - Find `test_citeconnect` in the DAG list
+   - Toggle the switch to **enable** the DAG
 
-Each run logs:
-- Total papers processed
-- Extraction success rate by method
-- Content quality distribution
-- Average introduction length
-- Failure reasons breakdown
+3. **Trigger Pipeline Run**
+   - Click the **▶️ Play** button on the right
+   - Confirm trigger in the popup
+
+4. **Monitor Execution**
+   - Click on the DAG name to view details
+   - Switch to **Graph View** to see task progress
+   - Tasks turn **green** when successful, **red** on failure
+
+5. **View Logs**
+   - Click on any task box
+   - Select **Log** to view execution details
+
+### Option 2: Via Command Line
+
+```bash
+# Trigger the DAG manually
+docker compose exec airflow-webserver airflow dags trigger test_citeconnect
+
+# Check DAG run status
+docker compose exec airflow-webserver airflow dags list-runs -d test_citeconnect
+
+# View specific task logs (replace DATE with actual date)
+docker compose exec airflow-webserver airflow tasks logs \
+    test_citeconnect check_env_variables DATE
+
+# Monitor real-time execution
+docker compose logs -f airflow-scheduler
+```
+
+### Option 3: Standalone Execution (Without Airflow)
+
+```bash
+# Activate virtual environment
+source .venv/bin/activate
+
+# Run data collection directly
+python src/DataPipeline/Ingestion/main.py \
+    --search-terms "machine learning" "deep learning" \
+    --limit 10 \
+    --output data/raw
+
+# Check collected data
+ls -lh data/raw/
+
+# Run preprocessing
+python src/DataPipeline/preprocessing/preprocess.py \
+    --input data/raw \
+    --output data/processed
+
+# Generate embeddings
+python src/services/embedding_service.py \
+    --domain healthcare \
+    --batch-size 10 \
+    --max-papers 20
+```
+
+### Pipeline Execution Steps
+
+When you run the pipeline, it executes the following tasks in sequence:
+
+1. **check_env_variables** (~5 seconds)
+   - Validates all API keys and environment variables
+
+2. **check_gcs_connection** (~10 seconds)
+   - Tests GCS bucket access and lists files
+
+3. **test_api_connection** (~2-3 minutes)
+   - Runs 164 unit tests with pytest
+   - Reports test results and coverage
+
+4. **test_paper_collection** (~2-5 minutes)
+   - Searches for papers on "large language models"
+   - Collects 5 papers with full metadata
+   - Uploads to GCS raw/ folder
+
+5. **preprocess_papers** (~1-2 minutes)
+   - Validates and cleans collected data
+   - Uploads processed data to GCS
+
+6. **embed_stored_data** (~3-5 minutes)
+   - Generates vector embeddings
+   - Saves to local embeddings_db.pkl
+
+7. **version_embeddings_dvc** (~1-2 minutes)
+   - Tracks embeddings with DVC
+   - Creates run_summary.json
+   - Commits to Git and pushes to DVC remote
+
+8. **send_success_notification** (~5 seconds)
+   - Sends email with pipeline results
+
+**Total Pipeline Duration: ~3-5 minutes**
+
+### Email Notifications
+
+After successful completion, you'll receive an HTML email with:
+- Papers processed count
+- Embeddings created count
+- Final data size
+- Pipeline parameters
+- Git commit message
+- Task completion status
 
 ---
 
-## Integration with CiteConnect Pipeline
-
-### Next Steps After Ingestion
-
-1. **Data Preprocessing** (`preprocessing.py`)
-   - Text cleaning and normalization
-   - Feature engineering (temporal, citation-based)
-   - Data quality validation
-
-2. **Embedding Generation** (`embedding_generation.py`)
-   - Generate vector embeddings using sentence-transformers
-   - Create combined text (title + abstract + intro)
-   - Store embeddings for similarity search
-
-3. **Vector Store Creation** (`vector_store.py`)
-   - Build FAISS index for fast retrieval
-   - Upload to Pinecone/Weaviate for production
-
-4. **Citation Graph** (`graph_builder.py`)
-   - Build Neo4j graph from citations/references
-   - Enable network-based recommendations
-
----
-
-## File Structure
+##  Project Structure
 
 ```
 CiteConnect/
-├── ingestion.py              # Main ingestion script
-├── requirements.txt          # Python dependencies
-├── README.md                # This file
-└── data/
-    └── papers/              # Output parquet files
-        ├── machine_learning_*.parquet
-        └── AI_healthcare_*.parquet
+├── README.md                              # Project documentation
+├── requirements.txt                       # Production dependencies
+├── requirements-test.txt                  # Testing dependencies
+├── setup.py                               # Package configuration
+├── pytest.ini                             # Test configuration
+├── docker-compose.yaml                    # Docker services
+├── .env.example                           # Environment template
+├── .gitignore                             # Git ignore rules
+├── dags/
+│   └── test_citeconnect.py                # Airflow DAG orchestration
+│
+├── src/
+│   ├── citeconnect.egg-info/              # Package metadata
+│   │
+│   ├── DataPipeline/
+│   │   ├── embeddings/
+│   │   │   ├── __init__.py                # Module initialization
+│   │   │   ├── config.py                  # Embedding configuration
+│   │   │   ├── embed_generator.py         # Generate embeddings
+│   │   │   ├── local_embedder.py          # Local model inference
+│   │   │   ├── openai_embedder.py         # OpenAI API wrapper
+│   │   │   ├── README.md                  # Embeddings documentation
+│   │   │   └── vector_store.py            # Vector storage management
+│   │   │
+│   │   ├── Ingestion/
+│   │   │   ├── __init__.py                # Module initialization
+│   │   │   ├── batch_ingestion.py         # Batch paper collection
+│   │   │   ├── content_extractor.py       # 4-tier extraction
+│   │   │   ├── gcs_uploader.py            # Cloud storage upload
+│   │   │   ├── main.py                    # Ingestion entry point
+│   │   │   ├── metadata_utils.py          # Metadata processing
+│   │   │   ├── processor.py               # Data processing logic
+│   │   │   └── semantic_scholar_client.py # API client
+│   │   │
+│   │   ├── metrics/
+│   │   │   └── stats.json                 # Pipeline statistics
+│   │   │
+│   │   ├── preprocessing/
+│   │   │   ├── __init__.py                # Module initialization
+│   │   │   ├── chunker.py                 # Text chunking
+│   │   │   ├── metadata_enricher.py       # Enrich metadata
+│   │   │   ├── README.md                  # Preprocessing docs
+│   │   │   └── text_cleaner.py            # Text normalization
+│   │   │
+│   │   ├── Processing/
+│   │   │   ├── __init__.py                # Module initialization
+│   │   │   └── gcs_read.py                # Read from GCS
+│   │   │
+│   │   ├── utils/
+│   │   │   ├── __init__.py                # Module initialization
+│   │   │   ├── constants.py               # Global constants
+│   │   │   ├── logging_config.py          # Logging setup
+│   │   │   └── storage_helpers.py         # Storage utilities
+│   │   │
+│   │   └── Validation/
+│   │       ├── __init__.py                # Module initialization
+│   │       └── analyse_data.ipynb         # Data analysis notebook
+│   │
+│   └── ModelPipeline/                     # Future ML models
+│
+├── tests/
+│   ├── conftest.py                        # Shared test fixtures
+│   │
+│   ├── Unit/
+│   │   ├── test_semantic_scholar_client.py # API client tests
+│   │   ├── test_content_extractor.py      # Extraction tests
+│   │   ├── test_metadata_utils.py         # Metadata tests
+│   │   ├── test_processor.py              # Processing tests
+│   │   ├── test_gcs_uploader.py           # Upload tests
+│   │   └── test_setup.py                  # Setup validation
+│   │
+│   ├── integration/
+│   │   └── test_end_to_end_pipeline.py    # E2E pipeline tests
+│   │
+│   └── fixtures/
+│       ├── sample_papers.json             # Test data
+│       └── mock_responses.py              # Mock API responses
+│
+├── services/
+│   └── embedding_service.py               # Embedding orchestration
+│
+├── config/
+│   ├── gcp-credentials.json               # GCP service account
+│   └── api_keys.env                       # API secrets
+│
+├── scripts/
+│   ├── generate_fernet_key.py             # Generate Airflow key
+│   ├── health_check.py                    # System health check
+│   └── setup_environment.sh               # Environment setup
+│
+├── data/                                  # Local data storage
+│   ├── raw/                               # Original papers
+│   ├── processed/                         # Cleaned data
+│   └── embeddings/                        # Vector embeddings
+│
+├── working_data/                          # DVC tracked data
+│   ├── embeddings_db.pkl                  # Embedding database
+│   ├── embeddings_db.pkl.dvc              # DVC metadata
+│   └── run_summary.json                   # Pipeline run logs
+│
+├── logs/                                  # Application logs
+│   └── pipeline.log                       # Execution logs
+│
+└── .dvc/                                  # DVC configuration
+    ├── config                             # Remote storage config
+    └── .gitignore                         # DVC ignore rules
+
+```
+---
+
+##  Troubleshooting
+
+### Docker Issues
+
+#### Services Not Starting
+
+**Problem**: Docker Compose fails to start services
+
+**Solution**:
+```bash
+# Check Docker is running
+docker ps
+
+# Restart Docker Desktop completely
+# Then try again
+docker compose down
+docker compose up --build
+
+# Check for port conflicts
+lsof -i :8080  # Airflow webserver
+lsof -i :5432  # PostgreSQL
+```
+
+#### Build Failures with I/O Error
+
+**Problem**: `failed to solve: Internal: write... input/output error`
+
+**Solution**:
+```bash
+# Stop all containers
+docker compose down
+
+# Clean Docker system
+docker system prune -a --volumes
+
+# Restart Docker Desktop
+# Increase Docker resources:
+# Docker Desktop → Settings → Resources
+# Memory: 8GB, Disk: 64GB
+
+# Rebuild
+docker compose up --build
+```
+
+#### Version Warning
+
+**Problem**: `the attribute 'version' is obsolete`
+
+**Solution**:
+```bash
+# Edit docker-compose.yaml and remove the line:
+# version: '3.8'
+
+# Or use sed (Linux/Mac):
+sed -i '/^version:/d' docker-compose.yaml
+```
+
+### Airflow Issues
+
+#### Webserver Not Accessible
+
+**Problem**: Cannot access http://localhost:8080
+
+**Solution**:
+```bash
+# Check if webserver is running
+docker compose ps
+
+# View webserver logs
+docker compose logs airflow-webserver
+
+# Restart webserver
+docker compose restart airflow-webserver
+
+# If still failing, rebuild
+docker compose down
+docker compose up -d --build
+```
+
+#### DAG Not Appearing
+
+**Problem**: `test_citeconnect` DAG not visible in UI
+
+**Solution**:
+```bash
+# Check for import errors
+docker compose exec airflow-webserver airflow dags list-import-errors
+
+# Validate DAG syntax
+python -m py_compile dags/test_citeconnect.py
+
+# Check DAG file is mounted
+docker compose exec airflow-webserver ls /opt/airflow/dags/
+
+# Force DAG refresh
+docker compose restart airflow-scheduler
+
+# Wait 30 seconds and refresh UI
+```
+
+#### Task Failures
+
+**Problem**: Tasks failing with import errors
+
+**Solution**:
+```bash
+# Check if src is in Python path
+docker compose exec airflow-webserver python -c "import sys; print(sys.path)"
+
+# Verify package installation
+docker compose exec airflow-webserver pip list | grep cite
+
+# Reinstall in container
+docker compose exec airflow-webserver pip install -e /opt/airflow
+
+# Check task logs for details
+docker compose exec airflow-webserver airflow tasks logs test_citeconnect TASK_NAME DATE
+```
+
+### GCS Connection Issues
+
+#### Authentication Errors
+
+**Problem**: `403 Forbidden` or authentication failures
+
+**Solution**:
+```bash
+# Verify credentials file exists and is valid
+ls -l config/gcp-credentials.json
+cat config/gcp-credentials.json | python -m json.tool
+
+# Test authentication locally
+python -c "from google.cloud import storage; storage.Client(); print('Success!')"
+
+# Check environment variable in container
+docker compose exec airflow-webserver env | grep GOOGLE_APPLICATION_CREDENTIALS
+
+# Verify credentials are mounted
+docker compose exec airflow-webserver ls -l /opt/airflow/config/gcp-credentials.json
+```
+
+#### Bucket Access Denied
+
+**Problem**: `AccessDeniedException` when accessing bucket
+
+**Solution**:
+```bash
+# Verify bucket exists
+gsutil ls gs://citeconnect-test-bucket
+
+# Check your permissions
+gsutil iam get gs://citeconnect-test-bucket
+
+# Grant yourself access
+gsutil iam ch user:YOUR_EMAIL:objectAdmin gs://citeconnect-test-bucket
+
+# Verify service account has access
+gsutil iam ch serviceAccount:SERVICE_ACCOUNT:objectAdmin gs://citeconnect-test-bucket
+
+# Test upload
+echo "test" > /tmp/test.txt
+gsutil cp /tmp/test.txt gs://citeconnect-test-bucket/test.txt
+```
+
+#### Cannot Get IAM Policy
+
+**Problem**: `does not have storage.buckets.getIamPolicy access`
+
+**Solution**:
+```bash
+# Option 1: Use GCP Console (easiest)
+# Go to console.cloud.google.com → Storage → Bucket → Permissions
+# Add your email with "Storage Object Admin" role
+
+# Option 2: Grant yourself Storage Admin at project level
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+  --member="user:YOUR_EMAIL" \
+  --role="roles/storage.admin"
+
+# Wait 60 seconds for propagation, then retry
+```
+
+### API Issues
+
+#### Rate Limiting (429 Errors)
+
+**Problem**: `429 Too Many Requests` from Semantic Scholar
+
+**Solution**:
+```bash
+# Set API key in .env file
+SEMANTIC_SCHOLAR_KEY=your_actual_api_key_here
+
+# Restart containers to pick up new env var
+docker compose restart
+
+# Reduce batch size temporarily
+# Edit search_terms in dags/test_citeconnect.py
+# Change limit from 5 to 2
+
+# Verify API key is set in container
+docker compose exec airflow-webserver env | grep SEMANTIC_SCHOLAR
+```
+
+#### Connection Timeouts
+
+**Problem**: API requests timing out
+
+**Solution**:
+```bash
+# Check internet connectivity
+ping api.semanticscholar.org
+
+# Increase timeout in code (if needed)
+# Edit src/DataPipeline/Ingestion/semantic_scholar_client.py
+# Increase timeout parameter
+
+# Check if behind firewall/proxy
+# Set proxy environment variables if needed
+```
+
+### Test Failures
+
+#### Import Errors in Tests
+
+**Problem**: `ModuleNotFoundError: No module named 'src'`
+
+**Solution**:
+```bash
+# Install package in editable mode
+pip install -e .
+
+# Verify installation
+pip show citeconnect
+
+# Check PYTHONPATH
+echo $PYTHONPATH
+
+# Add manually if needed
+export PYTHONPATH="${PYTHONPATH}:$(pwd)/src"
+
+# Run tests again
+pytest
+```
+
+#### Fixture Not Found
+
+**Problem**: `fixture 'some_fixture' not found`
+
+**Solution**:
+```bash
+# Verify conftest.py exists
+ls tests/conftest.py
+
+# Run from project root (not from tests/ directory)
+cd /path/to/CiteConnect
+pytest
+
+# Check fixture is defined in conftest.py
+grep "def some_fixture" tests/conftest.py
+```
+
+#### Tests Pass Locally but Fail in Airflow
+
+**Problem**: Tests pass when run manually but fail in DAG
+
+**Solution**:
+```bash
+# Check working directory in Airflow task
+# Add to test_api_connection function:
+print(f"Current directory: {os.getcwd()}")
+
+# Ensure pytest is installed in container
+docker compose exec airflow-webserver pip list | grep pytest
+
+# Run pytest from same directory as Airflow
+docker compose exec airflow-webserver bash
+cd /opt/airflow
+pytest tests/Unit/ -v
+```
+
+### DVC Issues
+
+#### DVC Push Fails
+
+**Problem**: `dvc push` fails with authentication error
+
+**Solution**:
+```bash
+# Verify DVC remote is configured
+dvc remote list -v
+
+# Test GCS access with gsutil
+gsutil ls gs://citeconnect-test-bucket/dvc-cache/
+
+# Reconfigure credentials
+dvc remote modify storage credentialpath ./config/gcp-credentials.json
+
+# Try push again
+dvc push -v  # Verbose output for debugging
+```
+
+#### Git Safe Directory Error
+
+**Problem**: `fatal: detected dubious ownership in repository`
+
+**Solution**:
+```bash
+# Add to safe directories (already handled in DAG)
+git config --global --add safe.directory /opt/airflow
+
+# Verify configuration
+git config --global --list | grep safe.directory
+```
+
+### Memory/Performance Issues
+
+#### Out of Memory Errors
+
+**Problem**: Container runs out of memory
+
+**Solution**:
+```bash
+# Increase Docker memory limit
+# Docker Desktop → Settings → Resources → Memory: 8GB+
+
+# Reduce batch size in pipeline
+# Edit dags/test_citeconnect.py
+# Change batch_size=5 to batch_size=2
+
+# Monitor memory usage
+docker stats
+```
+
+#### Slow Performance
+
+**Problem**: Pipeline runs very slowly
+
+**Solution**:
+```bash
+# Check if API key is set (5x speed improvement)
+docker compose exec airflow-webserver env | grep SEMANTIC_SCHOLAR_KEY
+
+# Reduce paper limit for faster testing
+# Edit dags/test_citeconnect.py
+# Change limit=5 to limit=2
+
+# Check system resources
+docker stats
+top  # or htop on Linux
+
+# Disable unnecessary services
+# Comment out unused services in docker-compose.yaml
 ```
 
 ---
 
-## API Documentation
+##  License
 
-### Semantic Scholar API
+This project is licensed under the MIT License. See the LICENSE file for details.
 
-**Endpoint**: `https://api.semanticscholar.org/graph/v1/paper/search`
+---
 
-**Fields Requested**:
-```
-paperId, externalIds, title, abstract, year, publicationDate,
-venue, publicationVenue, publicationTypes, authors,
-citationCount, influentialCitationCount, referenceCount,
-citations, references, fieldsOfStudy, s2FieldsOfStudy,
-isOpenAccess, openAccessPdf, tldr
-```
 
-### Notes
-1. Open-access PDFs are stored and parsed; restricted PDFs are linked via metadata only.
-2. This project is for academic purposes and aligns with the MLOps IE7305 course objectives.
+##  Project Status
 
-# CiteConnect Project Structure
+**Current Phase**: Data Pipeline Development (Phase 1 Complete)
 
-```
-citeconnect/
-├── README.md
-├── requirements.txt
-├── requirements-test.txt           # NEW: Testing dependencies
-├── pytest.ini                      # NEW: Test configuration
-├── setup.py                        # NEW: Package setup for testing
-├── TESTING_PIPELINE.md            # NEW: Testing documentation
-├── docker-compose.yaml
-├── .env.example
-├── .gitignore
-├── pyproject.toml
-├── dags/
-│   ├── __init__.py
-│   ├── simple_data_ingestion_dag.py
-│   ├── complete_mlops_pipeline_dag.py
-│   └── dag_utils/
-│       ├── __init__.py
-│       ├── notification_helpers.py
-│       └── task_groups.py
-├── src/
-│   ├── __init__.py
-│   ├── data_pipeline/
-│   │   ├── __init__.py
-│   │   ├── ingestion/
-│   │   │   ├── __init__.py
-│   │   │   ├── semantic_scholar_client.py
-│   │   │   ├── content_extractor.py
-│   │   │   ├── metadata_utils.py
-│   │   │   ├── processor.py
-│   │   │   ├── gcs_uploader.py
-│   │   │   ├── batch_ingestion.py
-│   │   │   ├── arxiv_client.py
-│   │   │   ├── paper_selector.py
-│   │   │   └── batch_downloader.py
-│   │   ├── processing/
-│   │   │   ├── __init__.py
-│   │   │   ├── pdf_processor.py
-│   │   │   ├── text_extractor.py
-│   │   │   ├── chunking_engine.py
-│   │   │   └── preprocessing_utils.py
-│   │   ├── validation/
-│   │   │   ├── __init__.py
-│   │   │   ├── quality_checker.py
-│   │   │   ├── validation_rules.py
-│   │   │   ├── data_profiler.py
-│   │   │   └── batch_validator.py
-│   │   └── utils/
-│   │       ├── __init__.py
-│   │       ├── constants.py
-│   │       ├── storage_helpers.py
-│   │       ├── logging_config.py
-│   │       └── error_handlers.py
-│   ├── model_pipeline/
-│   │   ├── __init__.py
-│   │   ├── embeddings/
-│   │   │   ├── __init__.py
-│   │   │   ├── embedding_generator.py
-│   │   │   ├── vector_store.py
-│   │   │   └── similarity_search.py
-│   │   ├── training/
-│   │   │   ├── __init__.py
-│   │   │   ├── model_trainer.py
-│   │   │   ├── recommendation_engine.py
-│   │   │   └── evaluation_metrics.py
-│   │   └── serving/
-│   │       ├── __init__.py
-│   │       ├── model_server.py
-│   │       └── api_endpoints.py
-│   ├── deployment/
-│   │   ├── __init__.py
-│   │   ├── infrastructure/
-│   │   │   ├── gcp_setup.py
-│   │   │   ├── k8s_deployer.py
-│   │   │   └── terraform_configs.py
-│   │   ├── containers/
-│   │   │   ├── Dockerfile.data_pipeline
-│   │   │   ├── Dockerfile.model_server
-│   │   │   └── Dockerfile.api
-│   │   └── monitoring/
-│   │       ├── prometheus_config.py
-│   │       ├── grafana_dashboards.py
-│   │       └── alerting_rules.py
-│   └── web_app/
-│       ├── __init__.py
-│       ├── app.py
-│       ├── static/
-│       ├── templates/
-│       └── components/
-├── tests/                          # UPDATED: Complete test structure
-│   ├── __init__.py
-│   ├── conftest.py                # Shared fixtures and test configuration
-│   │
-│   ├── unit/                      # Unit tests (147 tests)
-│   │   ├── __init__.py
-│   │   ├── test_semantic_scholar_client.py    # 35 tests
-│   │   ├── test_content_extractor.py          # 32 tests
-│   │   ├── test_metadata_utils.py             # 44 tests
-│   │   ├── test_processor.py                  # 18 tests
-│   │   ├── test_gcs_uploader.py              # 23 tests
-│   │   └── test_setup.py                      # Setup validation tests
-│   │
-│   ├── integration/               # Integration tests (12 tests)
-│   │   ├── __init__.py
-│   │   └── test_end_to_end_pipeline.py       # Complete pipeline tests
-│   │
-│   ├── data_quality/              # Data quality tests (future)
-│   │   ├── __init__.py
-│   │   ├── test_schema_validation.py
-│   │   ├── test_data_completeness.py
-│   │   └── test_anomaly_detection.py
-│   │
-│   └── fixtures/                  # Test data and mocks
-│       ├── __init__.py
-│       ├── sample_papers.json
-│       └── mock_responses.py
-│
-├── configs/
-│   ├── __init__.py
-│   ├── config.yaml
-│   ├── selection_criteria.yaml
-│   ├── model_config.yaml
-│   ├── logging.yaml
-│   └── deployment_config.yaml
-├── scripts/
-│   ├── setup_environment.sh
-│   ├── install_dependencies.sh
-│   ├── generate_fernet_key.py
-│   ├── data_backup.py
-│   └── health_check.py
-├── docs/
-│   ├── README.md
-│   ├── SETUP.md
-│   ├── API_DOCUMENTATION.md
-│   ├── ARCHITECTURE.md
-│   ├── diagrams/
-│   └── presentations/
-├── infrastructure/
-│   ├── terraform/
-│   │   ├── main.tf
-│   │   ├── variables.tf
-│   │   └── outputs.tf
-│   ├── kubernetes/
-│   │   ├── deployment.yaml
-│   │   ├── service.yaml
-│   │   └── ingress.yaml
-│   └── monitoring/
-│       ├── prometheus.yaml
-│       ├── grafana-dashboard.json
-│       └── alerts.yaml
-├── notebooks/
-│   ├── 01_data_exploration.ipynb
-│   ├── 02_pdf_processing_analysis.ipynb
-│   ├── 03_embedding_experiments.ipynb
-│   └── 04_model_evaluation.ipynb
-├── data/
-│   ├── raw/
-│   ├── processed/
-│   ├── embeddings/
-│   └── models/
-├── logs/
-│   └── .gitkeep
-├── working_data/
-│   ├── temp_pdfs/
-│   ├── processing_cache/
-│   └── .gitkeep
-├── config/
-│   ├── .gitkeep
-│   ├── gcp-credentials.json
-│   └── api_keys.env
-└── plugins/
-    ├── __init__.py
-    ├── operators/
-    │   ├── citeconnect_operators.py
-    │   └── gcs_operators.py
-    └── hooks/
-        └── semantic_scholar_hook.py
-```
+**Completed**:
+- ✅ Multi-source data ingestion
+- ✅ 4-tier content extraction
+- ✅ Comprehensive metadata collection
+- ✅ Data preprocessing and validation
+- ✅ Embedding generation
+- ✅ DVC integration for data versioning
+- ✅ Airflow orchestration with 8 tasks
+- ✅ 176 automated tests (85%+ coverage)
+- ✅ Email notifications
+- ✅ GCS cloud storage integration
+
+**Planned** (Phase 2):
+- 🔄 Citation graph construction (Neo4j)
+- 🔄 Vector database optimization
+- 🔄 Performance tuning
+- 📋 Recommendation algorithm development
+- 📋 User interface (web application)
+- 📋 Personalized ranking system
+- 📋 A/B testing framework
+- 📋 Production deployment to GCP
+
+---
+**Last Updated**: November 2024  
+**Version**: 1.0.0  
+**Status**: ✅ Production Ready (Phase 1 Complete)

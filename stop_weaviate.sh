@@ -4,4 +4,4 @@
 echo "Stopping Weaviate..."
 docker stop weaviate
 docker rm weaviate
-echo "✅ Weaviate stopped"
+echo " Weaviate stopped"
