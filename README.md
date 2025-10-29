@@ -30,6 +30,7 @@ Comprehensive documentation is available in the [`documentation/`](https://githu
 - **[Error Audit & Quality Assurance Plan](https://github.com/DhikshaMathanagopal/CiteConnect/blob/main/documentation/Error%20Audit%20%26%20Quality%20Assurance%20Plan.md)** - Detailed error scenarios, resolution strategies, and QA monitoring framework
 - **[User Research Analysis Report](https://github.com/DhikshaMathanagopal/CiteConnect/blob/main/documentation/User%20Research%20Analysis%20Report.md)** - User research findings and UX insights
 - **[Pipeline Testing Documentation](https://github.com/DhikshaMathanagopal/CiteConnect/blob/main/documentation/test_pipelineDoc.md)** - Detailed pipeline architecture and testing documentation
+- **[Preprocessing & Embedding](https://github.com/DhikshaMathanagopal/CiteConnect/blob/main/documentation/Embedding%20&%20Preprocessing.md)** - Detailed explanation of preprocessing and embedding technique
 
 ---
 ##  Overview
