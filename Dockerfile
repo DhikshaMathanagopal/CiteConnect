@@ -5,7 +5,7 @@ USER airflow
 
 # Copy and install requirements
 COPY requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
+RUN pip install -r /tmp/requirements.txt
 
 # Copy everything (except what's in .dockerignore)
 COPY --chown=airflow:root . /opt/airflow/dags/project/

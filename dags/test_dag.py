@@ -226,30 +226,127 @@ from airflow.operators.python_operator import PythonOperator
 import json
 import subprocess
 
-# ----- Phase 2: Run Bias Slicing Script -----
+# ----- Phase 2a: Load Data from GCS -----
+def load_bias_data_from_gcs():
+    """Load all parquet files from GCS and combine them for bias analysis."""
+    import pandas as pd
+    import json
+    import numpy as np
+    from utils.gcs_reader import GCSReader
+    
+    print("Loading data from GCS for bias analysis ...")
+    
+    # Set working directory to project root
+    project_root = '/opt/airflow'
+    data_path = os.path.join(project_root, "data/combined_gcs_data.parquet")
+    
+    # Check if data already exists
+    if os.path.exists(data_path):
+        print(f"✅ Data file already exists at {data_path}. Skipping download.")
+        return "data_loaded"
+    
+    try:
+        # Initialize GCS reader
+        reader = GCSReader(
+            bucket_name="citeconnect-test-bucket",
+            project_id="strange-calling-476017-r5"
+        )
+        
+        # Load all parquet files from raw/ folder
+        print("📥 Loading all parquet files from citeconnect-test-bucket/raw/")
+        df_all = reader.read_all_from_domain(
+            domain="",
+            custom_prefix="raw/",
+            flat_structure=True
+        )
+        
+        if df_all.empty:
+            raise ValueError("No data loaded from GCS!")
+        
+        print(f"✅ Loaded {len(df_all)} total records from GCS")
+        
+        # Clean up any dict/list/ndarray columns before saving
+        def safe_serialize(val):
+            """Convert dicts, lists, or arrays into JSON-safe strings"""
+            if isinstance(val, (dict, list, np.ndarray)):
+                try:
+                    return json.dumps(val, default=str)
+                except Exception:
+                    return str(val)
+            return val
+
+        for col in df_all.columns:
+            if df_all[col].dtype == 'object':
+                df_all[col] = df_all[col].apply(safe_serialize)
+        
+        # Save to local file
+        os.makedirs(os.path.join(project_root, "data"), exist_ok=True)
+        df_all.to_parquet(data_path, index=False)
+        
+        print(f"💾 Saved merged data to {data_path}")
+        print(f"📊 Columns: {df_all.columns.tolist()}")
+        print(f"📊 Shape: {df_all.shape}")
+        
+        return "data_loaded"
+        
+    except Exception as e:
+        print(f"❌ Error loading data from GCS: {e}")
+        raise
+
+# ----- Phase 2b: Run Bias Slicing Script -----
 def run_bias_slicing():
     print("Running Fairlearn slicing analysis ...")
+    
+    # Set working directory to project root
+    project_root = '/opt/airflow'
+    
+    # Check if data file exists
+    data_path = os.path.join(project_root, "data/combined_gcs_data.parquet")
+    if not os.path.exists(data_path):
+        raise FileNotFoundError(f"Data file not found: {data_path}. Run GCS data loading first.")
+    
     result = subprocess.run(
         ["python", "databias/slicing_bias_analysis.py"],
-        capture_output=True, text=True
+        capture_output=True, 
+        text=True,
+        cwd=project_root,
+        timeout=600
     )
     print(result.stdout)
-    print(result.stderr)
+    if result.stderr:
+        print(result.stderr)
+    
+    # Check if the script ran successfully
+    if result.returncode != 0:
+        raise RuntimeError(f"Bias slicing script failed with exit code: {result.returncode}")
+    
     print("✅ Bias slicing completed. Results saved in databias/slices/")
     return "bias_slicing_done"
+
+load_bias_data_task = PythonOperator(
+    task_id='load_bias_data_from_gcs',
+    python_callable=load_bias_data_from_gcs,
+    dag=dag,
+    trigger_rule='all_done'  # Run even if upstream tasks are skipped
+)
 
 bias_slicing_task = PythonOperator(
     task_id='bias_slicing_analysis',
     python_callable=run_bias_slicing,
-    dag=dag
+    dag=dag,
+    trigger_rule='all_success'  # Only run if upstream succeeded
 )
 
 # ----- Phase 3: Check Bias and Send Alerts -----
 def check_bias_and_send_alert():
     print("Checking fairness_disparity.json ...")
-    disparity_path = "databias/slices/fairness_disparity.json"
+    
+    # Use absolute path to project root
+    project_root = '/opt/airflow'
+    disparity_path = os.path.join(project_root, "databias/slices/fairness_disparity.json")
+    
     if not os.path.exists(disparity_path):
-        raise ValueError("fairness_disparity.json not found. Run slicing first.")
+        raise ValueError(f"fairness_disparity.json not found at {disparity_path}. Run slicing first.")
     
     with open(disparity_path, "r") as f:
         disparity = json.load(f)
@@ -387,5 +484,5 @@ notification_task = PythonOperator(
 )
 
 # Set dependencies
-env_check_task >> gcs_check_task >> api_test_task >> collection_test_task >> preprocess_task >> embed_task >> bias_slicing_task >> bias_alert_task >> bias_mitigation_task >> notification_task
+env_check_task >> gcs_check_task >> api_test_task >> collection_test_task >> preprocess_task >> load_bias_data_task >> bias_slicing_task >> bias_alert_task >> bias_mitigation_task >> embed_task >> notification_task
 # env_check_task >> gcs_check_task >> api_test_task >> preprocess_task >> notification_task

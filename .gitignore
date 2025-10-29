@@ -1,3 +1,16 @@
+<<<<<<< HEAD
+__pycache__/
+venv/
+.env
+data/raw/*
+data/processed/*
+*.pyc
+logs/
+data/
+*.parquet
+*.csv
+.ipynb_checkpoints/
+=======
 # Python
 __pycache__/
 *.py[cod]
@@ -90,4 +103,8 @@ gcs-credentials.json
 
 # # ChromaDB specific (commented out)
 # chroma/
-# .chroma/
+# .chroma/>>>>>>> origin/main
+
+databias/slices/*.png
+databias/plots/*.png
+data/*.parquet

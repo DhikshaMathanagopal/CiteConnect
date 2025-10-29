@@ -5,6 +5,12 @@ import seaborn as sns
 import json
 import ast
 import os
+import sys
+from pathlib import Path
+
+# Add parent directory to path to import utils
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from utils.storage_helpers import upload_to_gcs
 
 # ============================================================
 # 1. Load the combined or sample dataset
@@ -139,3 +145,33 @@ with open(summary_path, "w") as f:
 
 print(f"\n✅ Saved bias summary → {summary_path}")
 print("📊 Plots saved in databias/plots/")
+
+# ============================================================
+# 8. Upload results to GCS
+# ============================================================
+BUCKET_NAME = "citeconnect-test-bucket"
+GCS_PREFIX = "bias_analysis/"
+
+print("\n📤 Uploading analysis results to GCS...")
+
+# Upload summary JSON
+summary_blob_name = f"{GCS_PREFIX}bias_summary.json"
+if upload_to_gcs(summary_path, BUCKET_NAME, summary_blob_name):
+    print(f"✅ Uploaded bias summary → gs://{BUCKET_NAME}/{summary_blob_name}")
+
+# Upload plots
+plot_files = [
+    "databias/plots/temporal_bias.png",
+    "databias/plots/field_bias.png",
+    "databias/plots/citation_bias.png",
+    "databias/plots/quality_bias.png"
+]
+
+for plot_file in plot_files:
+    if os.path.exists(plot_file):
+        plot_name = os.path.basename(plot_file)
+        plot_blob_name = f"{GCS_PREFIX}plots/{plot_name}"
+        if upload_to_gcs(plot_file, BUCKET_NAME, plot_blob_name):
+            print(f"✅ Uploaded {plot_name} → gs://{BUCKET_NAME}/{plot_blob_name}")
+
+print("\n✅ Bias analysis complete! Results uploaded to GCS.")
