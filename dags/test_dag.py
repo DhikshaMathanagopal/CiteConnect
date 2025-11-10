@@ -98,7 +98,7 @@ def run_unit_tests():
         sys.path.insert(0, '/opt/airflow/src')
     
     # Check if test directory exists
-    test_dir = os.path.join(project_root, 'tests/Unit')
+    test_dir = os.path.join(project_root, 'tests/unit')
     if not os.path.exists(test_dir):
         print(f"Test directory not found: {test_dir}")
         return ValueError(f"Test directory not found: {test_dir}")
@@ -122,7 +122,7 @@ def run_unit_tests():
         # Run pytest with your exact command
         result = subprocess.run([
             sys.executable, '-m', 'pytest', 
-            'tests/Unit/', 
+            'tests/unit/', 
             '-v'
         ], 
         capture_output=True, 
